@@ -29,7 +29,7 @@
   'use strict';
 
   const KEY = 'rainbow-trial-v1';
-  const VERSION = 1;
+  const VERSION = 3;          // Phase 3 で 3 に更新(既存データは migrate() で保持)
   const INITIAL_CAPITAL = 300000;
 
   /* --------------------------------------------------------------------------
@@ -69,7 +69,11 @@
         startDate: null,       // ISO文字列
         currentDay: 1,
         agreedTerms: false,
-        testMode: false        // true = シグナル配信間隔 1 分
+        testMode: false,       // true = シグナル配信間隔 1 分
+        // Phase 3 追加
+        level: 1,
+        xp: 0,
+        titleAchieved: '見習いトレーダー'
       },
       account: {
         initialCapital: INITIAL_CAPITAL,
@@ -79,31 +83,106 @@
       trades: [],              // 完了したトレード記録
       signals: [],             // シグナルの配信/決定ステータス
       currentPosition: null,
+      // Phase 3 追加: ゲーム統計
+      gameStats: {
+        totalSignalsReceived: 0,
+        totalEntries: 0,
+        totalSkips: 0,
+        totalTPHits: 0,
+        totalSLHits: 0,
+        totalOKSignals: 0,     // 条件OKシグナルを受信した回数
+        totalNGSignals: 0,     // 条件NGシグナルを受信した回数
+        correctEntriesOK: 0,  // 条件OK時の正しいエントリー数
+        correctSkipsNG: 0,    // 条件NG時の正しい見送り数
+        consecutiveNGSkips: 0,   // 連続NG見送りカウント(実績「ルール守護者」用)
+        consecutiveOKEntries: 0, // 連続OK正解エントリーカウント(実績「完璧な判定」用)
+        currentStreak: 0,
+        maxStreak: 0,
+        judgmentScore: 0,
+        capitalHistory: [],    // [{ label, capital }] 資金推移グラフ用
+        dailyStats: {}         // { day1: { entries, wins, judgmentScore } }
+      },
+      // Phase 3 追加: 実績
+      achievements: {
+        unlocked: [],
+        progress: {},
+        lastUnlockedAt: null
+      },
+      // Phase 3 追加: デイリーミッション進捗
+      missions: {},
       settings: {
         soundEnabled: true,
-        notificationsGranted: false
+        notificationsGranted: false,
+        // Phase 3 追加: 効果音設定
+        sound: {
+          enabled: true,
+          volume: 0.8,
+          raritySounds: {
+            normal:    true,
+            good:      true,
+            rare:      true,
+            epic:      true,
+            legendary: true
+          }
+        },
+        // Phase 3 追加: アニメーション設定
+        animations: {
+          reduced: false
+        }
       },
       lastActiveTime: null     // 最終アクティブ時刻(ISO)
     };
   }
 
   /* --------------------------------------------------------------------------
-   * 3. マイグレーション(Phase 2 以降の拡張用スロット)
+   * 3. マイグレーション(既存データを保持しつつ新規フィールドを補完)
    * -------------------------------------------------------------------------- */
   function migrate(data) {
     if (!data || typeof data !== 'object') return createInitialState();
 
-    // Phase 2 でのバージョンアップに備え、欠損フィールドを補完
-    const init = createInitialState();
+    const init   = createInitialState();
     const merged = Object.assign({}, init, data);
+
+    // user: 既存フィールドを保持しつつ Phase 3 追加フィールドを補完
     merged.user = Object.assign({}, init.user, data.user || {});
+    if (merged.user.level         == null) merged.user.level         = 1;
+    if (merged.user.xp            == null) merged.user.xp            = 0;
+    if (merged.user.titleAchieved == null) merged.user.titleAchieved = '見習いトレーダー';
+
+    // account
     merged.account = Object.assign({}, init.account, data.account || {});
-    merged.settings = Object.assign({}, init.settings, data.settings || {});
-    merged.trades = Array.isArray(data.trades) ? data.trades.slice() : [];
-    merged.signals = Array.isArray(data.signals) ? data.signals.slice() : [];
+
+    // settings: ネストを深くマージ(Phase 3 の sound / animations を補完)
+    const oldSettings = data.settings || {};
+    merged.settings = Object.assign({}, init.settings, oldSettings);
+    merged.settings.sound = Object.assign({}, init.settings.sound, oldSettings.sound || {});
+    merged.settings.sound.raritySounds = Object.assign(
+      {}, init.settings.sound.raritySounds,
+      (oldSettings.sound && oldSettings.sound.raritySounds) || {}
+    );
+    merged.settings.animations = Object.assign({}, init.settings.animations, oldSettings.animations || {});
+
+    // Phase 3 新規フィールド: gameStats
+    merged.gameStats = Object.assign({}, init.gameStats, data.gameStats || {});
+
+    // Phase 3 新規フィールド: achievements
+    const oldAch = data.achievements || {};
+    merged.achievements = {
+      unlocked:       Array.isArray(oldAch.unlocked) ? oldAch.unlocked.slice() : [],
+      progress:       Object.assign({}, oldAch.progress || {}),
+      lastUnlockedAt: oldAch.lastUnlockedAt || null
+    };
+
+    // Phase 3 新規フィールド: missions
+    merged.missions = Object.assign({}, data.missions || {});
+
+    // 既存フィールド
+    merged.trades         = Array.isArray(data.trades)  ? data.trades.slice()  : [];
+    merged.signals        = Array.isArray(data.signals) ? data.signals.slice() : [];
     merged.currentPosition = data.currentPosition || null;
-    merged.lastActiveTime = data.lastActiveTime || null;
-    merged.version = VERSION;
+    merged.lastActiveTime  = data.lastActiveTime  || null;
+    merged.version         = VERSION;
+
     return merged;
   }
 
@@ -328,6 +407,48 @@
   }
 
   /* --------------------------------------------------------------------------
+   * 9b. Phase 3: gameStats 更新
+   * -------------------------------------------------------------------------- */
+  /**
+   * gameStats の指定フィールドを増分更新。
+   * @param {Object} patch — { totalEntries: 1, totalTPHits: 1, ... } など
+   */
+  function incrementGameStats(patch) {
+    const s = getState();
+    if (!s.gameStats) s.gameStats = {};
+    Object.keys(patch).forEach(function (key) {
+      const val = patch[key];
+      if (typeof val === 'number') {
+        s.gameStats[key] = (s.gameStats[key] || 0) + val;
+      }
+    });
+    save(s);
+    return s.gameStats;
+  }
+
+  /** gameStats フィールドを直接セット(streak リセット等) */
+  function setGameStats(patch) {
+    const s = getState();
+    if (!s.gameStats) s.gameStats = {};
+    Object.assign(s.gameStats, patch);
+    save(s);
+    return s.gameStats;
+  }
+
+  /** 資金推移履歴に1点追加 */
+  function pushCapitalHistory(label, capital) {
+    const s = getState();
+    if (!s.gameStats) s.gameStats = {};
+    if (!Array.isArray(s.gameStats.capitalHistory)) s.gameStats.capitalHistory = [];
+    s.gameStats.capitalHistory.push({ label: label, capital: capital });
+    // 最大 200 件まで保持
+    if (s.gameStats.capitalHistory.length > 200) {
+      s.gameStats.capitalHistory = s.gameStats.capitalHistory.slice(-200);
+    }
+    save(s);
+  }
+
+  /* --------------------------------------------------------------------------
    * 10. デバッグ / リセット
    * -------------------------------------------------------------------------- */
   /** 全削除(デバッグ用) */
@@ -405,6 +526,11 @@
 
     // 集計
     computeStats: computeStats,
+
+    // Phase 3: gameStats
+    incrementGameStats:  incrementGameStats,
+    setGameStats:        setGameStats,
+    pushCapitalHistory:  pushCapitalHistory,
 
     // 設定
     updateSettings: updateSettings,

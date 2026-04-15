@@ -18,7 +18,7 @@
 (function (global) {
   'use strict';
 
-  const MAIN_TABS = ['home', 'signals', 'history'];
+  const MAIN_TABS = ['home', 'signals', 'history', 'stats', 'achievements'];
   const HISTORY_FILTERS = [
     { key: 'all',    label: '全て' },
     { key: 'usdjpy', label: 'USDJPY' },
@@ -101,9 +101,6 @@
           self.setTab(btn.getAttribute('data-tab'));
         });
       });
-      // ヘッダー資金クリック(プレースホルダ)
-      const cap = document.getElementById('header-capital');
-      if (cap) cap.addEventListener('click', function () { self.setTab('history'); });
 
       // 学習モーダル用のクローズ
       const learnOverlay = document.getElementById('overlay-learning');
@@ -424,6 +421,7 @@
       const state = global.TrialStore.getState();
       const baselines = (global.PRICE_BASELINES || {});
       const lastUpdated = (baselines.lastUpdated || '').split('T')[0] || '—';
+      const soundCfg = (state.settings && state.settings.sound) || { enabled: true, volume: 0.8, raritySounds: {} };
 
       function row(label, control, desc) {
         return '<div class="settings-row"><div><div class="settings-row__label">' + label + '</div>' +
@@ -436,6 +434,11 @@
         const on = cfg.rarities[key] !== false;
         return '<div class="settings-row"><span class="rarity-pill rarity-pill--' + key + '">' + label + '</span>' +
           toggle('r-' + key, on) + '</div>';
+      }
+      function soundRarityRow(key, label) {
+        const on = soundCfg.raritySounds ? soundCfg.raritySounds[key] !== false : true;
+        return '<div class="settings-row"><span class="rarity-pill rarity-pill--' + key + '">' + label + '</span>' +
+          toggle('sr-' + key, on) + '</div>';
       }
 
       const permText = perm === 'granted' ? '✅ 許可済み'
@@ -478,8 +481,22 @@
         '</div>' +
 
         '<div class="settings-section">' +
+          '<div class="settings-section__title">🔊 効果音</div>' +
+          row('効果音を再生する', toggle('sound-enabled', soundCfg.enabled)) +
+          row('音量', '<input type="range" id="sound-volume" min="0" max="100" value="' + Math.round((soundCfg.volume || 0.8) * 100) + '" style="width:120px">') +
+          '<div class="settings-section__title" style="margin-top:12px;font-size:0.8rem">レアリティ別サウンド</div>' +
+          '<div class="rarity-grid">' +
+            soundRarityRow('normal',    'NORMAL') +
+            soundRarityRow('good',      'GOOD') +
+            soundRarityRow('rare',      'RARE') +
+            soundRarityRow('epic',      'EPIC') +
+            soundRarityRow('legendary', 'LEGENDARY') +
+          '</div>' +
+        '</div>' +
+
+        '<div class="settings-section">' +
           '<div class="settings-section__title">ℹ️ アプリ情報</div>' +
-          '<div class="settings-info">バージョン: <strong>2.0.0</strong></div>' +
+          '<div class="settings-info">バージョン: <strong>3.0.0</strong></div>' +
         '</div>';
 
       const self = this;
@@ -503,6 +520,29 @@
           N.updateNotificationSettings({ rarities: next });
         });
       });
+      // 効果音 ON/OFF
+      const soundBox = document.getElementById('sound-enabled');
+      if (soundBox && global.SoundSystem) {
+        soundBox.addEventListener('change', function () {
+          global.SoundSystem.setEnabled(soundBox.checked);
+        });
+      }
+      // 音量スライダー
+      const volSlider = document.getElementById('sound-volume');
+      if (volSlider && global.SoundSystem) {
+        volSlider.addEventListener('input', function () {
+          global.SoundSystem.setVolume(parseInt(volSlider.value, 10) / 100);
+        });
+      }
+      // レアリティ別サウンド
+      ['normal','good','rare','epic','legendary'].forEach(function (key) {
+        const srBox = document.getElementById('sr-' + key);
+        if (!srBox || !global.SoundSystem) return;
+        srBox.addEventListener('change', function () {
+          global.SoundSystem.setRaritySoundEnabled(key, srBox.checked);
+        });
+      });
+
       // リセット
       const rst = document.getElementById('btn-reset-all');
       if (rst) rst.addEventListener('click', function () {
@@ -693,6 +733,7 @@
       this.renderHome();
       this.renderSignals();
       this.renderHistory();
+      // stats / achievements はタブ切替時に描画するため省略
     },
 
     renderCurrentScreen: function () {
@@ -706,9 +747,11 @@
 
     renderTab: function () {
       switch (this.state.tab) {
-        case 'home':    this.renderHome(); break;
-        case 'signals': this.renderSignals(); break;
-        case 'history': this.renderHistory(); break;
+        case 'home':         this.renderHome(); break;
+        case 'signals':      this.renderSignals(); break;
+        case 'history':      this.renderHistory(); break;
+        case 'stats':        this.renderStats(); break;
+        case 'achievements': this.renderAchievements(); break;
       }
     },
 
@@ -718,9 +761,7 @@
     updateHeader: function () {
       const snap = global.GameState.snapshot();
       const dayEl = document.getElementById('header-day');
-      const capEl = document.getElementById('header-capital');
       if (dayEl) dayEl.textContent = 'Day ' + snap.displayDay + ' / 7';
-      if (capEl) capEl.textContent = global.GameState.formatCapital(snap.account.currentCapital);
     },
 
     /* ======================================================================
@@ -729,15 +770,19 @@
     renderHome: function () {
       const root = document.getElementById('panel-home');
       if (!root) return;
-      const snap = global.GameState.snapshot();
+      const snap    = global.GameState.snapshot();
       const unviewed = global.Signals.getAllUnviewed();
-      const pos = global.Trade.getCurrentPosition();
-      const stats = snap.stats;
+      const pos      = global.Trade.getCurrentPosition();
+      const stats    = snap.stats;
+      const state    = global.TrialStore.getState();
 
       let html = '';
 
       // 進捗バー
       html += this._renderProgressBar(snap);
+
+      // Phase 3: プロフィールカード (レベル・XP・連勝)
+      html += this._renderProfileCard(state);
 
       // 資金カード
       html += this._renderCapitalCard(snap.account, stats);
@@ -750,6 +795,16 @@
         html += this._renderPositionCard(pos);
       }
 
+      // Phase 3: 今日のミッション
+      if (global.MissionSystem) {
+        html += global.MissionSystem.renderMissionCard();
+      }
+
+      // Phase 3: 判定スキルカード
+      if (global.JudgmentScore) {
+        html += global.JudgmentScore.renderSkillCard(state);
+      }
+
       // 次のシグナル予測
       html += this._renderNextSignalCard(snap.next);
 
@@ -759,13 +814,98 @@
           '<strong>📚 条件の見方を確認する</strong>' +
         '</div>';
 
-      // 下部: 未確認シグナル一覧(pending + realtime、新しい順)
+      // Phase 3: 最近の実績(最後に解除した3個)
+      html += this._renderRecentAchievements(state);
+
+      // 下部: 未確認シグナル一覧
       if (unviewed.length > 0) {
         html += this._renderUnviewedSection(unviewed);
       }
 
       root.innerHTML = html;
       this._bindHomeEvents();
+
+      // 連勝バナー更新
+      if (global.Effects) {
+        const gs = state.gameStats || {};
+        global.Effects.updateStreakBanner(gs.currentStreak || 0);
+      }
+    },
+
+    _renderProfileCard: function (state) {
+      const user = state.user || {};
+      const xp   = user.xp    || 0;
+      const gs   = state.gameStats || {};
+      const streak = gs.currentStreak || 0;
+
+      let levelInfo = { level: 1, icon: '🌱', title: '見習いトレーダー', xpInLevel: 0, xpToNext: 100, progressPct: 0, isMaxLevel: false };
+      if (global.LevelSystem) {
+        levelInfo = global.LevelSystem.getLevelInfo(xp);
+      }
+
+      const filled = Math.round(levelInfo.progressPct / 10);
+      const bar    = '━'.repeat(filled) + '░'.repeat(10 - filled);
+      const xpLine = levelInfo.isMaxLevel
+        ? 'MAX LEVEL'
+        : (levelInfo.xpInLevel + ' / ' + levelInfo.xpToNext + ' XP');
+
+      let streakHTML = '';
+      if (streak >= 2) {
+        const fires = streak >= 5 ? '🔥🔥🔥' : streak >= 3 ? '🔥🔥' : '🔥';
+        streakHTML = '<div id="streak-banner-container"><div class="streak-banner">' +
+          '<span class="streak-banner__fire">' + fires + '</span>' +
+          '<div><div class="streak-banner__text">' + streak + '連勝中！</div></div>' +
+          '</div></div>';
+      } else {
+        streakHTML = '<div id="streak-banner-container"></div>';
+      }
+
+      return (
+        '<div class="profile-card">' +
+          '<div class="profile-card__greeting">こんにちは、' + (user.nickname || 'トレーダー') + 'さん</div>' +
+          '<div class="profile-card__level-row">' +
+            '<span class="profile-card__lv-badge">' + levelInfo.icon + ' Lv.' + levelInfo.level + '</span>' +
+            '<span class="profile-card__title">' + levelInfo.title + '</span>' +
+          '</div>' +
+          '<div class="xp-bar">' +
+            '<span class="xp-bar__bar">' + bar + '</span>' +
+            '<span class="xp-bar__xp">' + xpLine + '</span>' +
+          '</div>' +
+          streakHTML +
+        '</div>'
+      );
+    },
+
+    _renderRecentAchievements: function (state) {
+      if (!global.AchievementSystem || !global.ACHIEVEMENTS) return '';
+      const unlocked = (state.achievements && state.achievements.unlocked) || [];
+      if (unlocked.length === 0) return '';
+
+      // 最後に解除した3個(配列末尾から)
+      const recent = unlocked.slice(-3).reverse();
+      const achMap = {};
+      global.ACHIEVEMENTS.forEach(function (a) { achMap[a.id] = a; });
+
+      const cards = recent.map(function (id) {
+        const a = achMap[id];
+        if (!a) return '';
+        return (
+          '<div class="recent-ach-item">' +
+            '<span class="recent-ach-item__icon">' + a.icon + '</span>' +
+            '<span class="recent-ach-item__title">' + a.title + '</span>' +
+          '</div>'
+        );
+      }).join('');
+
+      return (
+        '<div class="card card--compact" style="margin-top:var(--sp-4)">' +
+          '<div class="card__header" style="margin-bottom:8px">' +
+            '<div class="card__title">🏆 最近の実績</div>' +
+            '<button class="btn btn--ghost btn--sm" id="btn-go-achievements">すべて見る</button>' +
+          '</div>' +
+          '<div class="recent-ach-list">' + cards + '</div>' +
+        '</div>'
+      );
     },
 
     _renderUnviewedSection: function (unviewed) {
@@ -911,7 +1051,7 @@
           self.openSignalDetail(id);
         });
       });
-      // 「最新から確認する」: 未確認の最新(配列先頭)を開く
+      // 「最新から確認する」
       const openFirst = document.getElementById('digest-open-first');
       if (openFirst) {
         openFirst.addEventListener('click', function () {
@@ -931,6 +1071,11 @@
       const learn = document.getElementById('learn-link-card');
       if (learn) {
         learn.addEventListener('click', function () { self.openLearningModal(); });
+      }
+      // Phase 3: 実績一覧へのリンク
+      const achBtn = document.getElementById('btn-go-achievements');
+      if (achBtn) {
+        achBtn.addEventListener('click', function () { self.setTab('achievements'); });
       }
     },
 
@@ -1034,6 +1179,33 @@
         case 'skipped':            return '見送り';
         case 'completed':          return '完了';
         default:                    return '-';
+      }
+    },
+
+    /* ======================================================================
+     * Phase 3: 統計タブ
+     * ====================================================================== */
+    renderStats: function () {
+      const root = document.getElementById('panel-stats');
+      if (!root) return;
+      if (global.StatsPanel) {
+        global.StatsPanel.render(root);
+      } else {
+        root.innerHTML = '<div class="empty"><div class="empty__icon">📈</div><div class="empty__text">統計を読み込み中...</div></div>';
+      }
+    },
+
+    /* ======================================================================
+     * Phase 3: 実績タブ
+     * ====================================================================== */
+    renderAchievements: function () {
+      const root = document.getElementById('panel-achievements');
+      if (!root) return;
+      if (global.AchievementSystem) {
+        const state = global.TrialStore.getState();
+        root.innerHTML = global.AchievementSystem.renderAchievementsPage(state);
+      } else {
+        root.innerHTML = '<div class="empty"><div class="empty__icon">🏆</div><div class="empty__text">実績を読み込み中...</div></div>';
       }
     },
 

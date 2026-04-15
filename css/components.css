@@ -1176,3 +1176,188 @@
   .promo-bar { flex-direction: column; align-items: stretch; }
   .promo-bar__actions { justify-content: flex-end; }
 }
+
+/* ==========================================================================
+   Phase 3 追加コンポーネント
+   ========================================================================== */
+
+/* ボタン追加バリアント */
+.btn--ghost { background: transparent; border-color: rgba(255,255,255,0.15); }
+.btn--ghost:hover { background: rgba(255,255,255,0.06); }
+.btn--sm { padding: 6px 12px; font-size: 0.8rem; }
+
+/* 色ユーティリティ */
+.color-win  { color: #4CAF50; }
+.color-lose { color: #F44336; }
+
+/* ---- ミッションカード ---- */
+.mission-card { margin: var(--sp-4) 0; }
+.mission-card__header {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+}
+.mission-card__icon  { font-size: 1.1rem; }
+.mission-card__title { font-weight: 700; flex: 1; }
+.mission-card__complete-badge {
+  font-size: 0.78rem; color: #4CAF50; font-weight: 700;
+}
+.mission-card__list { display: flex; flex-direction: column; gap: 6px; }
+.mission-item {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 0.88rem; color: var(--text-secondary);
+}
+.mission-item--done { color: var(--text-muted); text-decoration: line-through; }
+.mission-item__icon  { flex-shrink: 0; }
+.mission-item__title { flex: 1; }
+.mission-item__prog  { color: var(--text-muted); font-size: 0.78rem; }
+.mission-item__xp    { color: #FFD700; font-size: 0.78rem; font-weight: 600; margin-left: auto; }
+.mission-card__footer {
+  margin-top: 10px; font-size: 0.82rem; color: var(--text-muted);
+  border-top: 1px solid rgba(255,255,255,0.07); padding-top: 8px;
+}
+
+/* ---- 判定スキルカード ---- */
+.skill-card { margin: var(--sp-4) 0; }
+.skill-card__header {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+}
+.skill-card__icon  { font-size: 1.1rem; }
+.skill-card__title { font-weight: 700; flex: 1; }
+.skill-card__rank  { font-size: 0.85rem; font-weight: 700; }
+.skill-card__score {
+  text-align: center; margin: 8px 0;
+}
+.skill-card__score-num { font-size: 2.4rem; font-weight: 900; color: #FFD700; }
+.skill-card__score-label { font-size: 1rem; color: var(--text-muted); }
+.skill-card__empty { color: var(--text-muted); font-size: 0.85rem; }
+.skill-card__breakdown { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+.skill-card__row {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 0.82rem; color: var(--text-secondary);
+}
+.skill-card__row-label { flex: 1; }
+.skill-card__row-pct   { font-weight: 700; }
+.skill-card__bar { font-family: monospace; letter-spacing: -1px; font-size: 0.9rem; }
+.skill-card__bar--ok { color: #4CAF50; }
+.skill-card__bar--ng { color: #42A5F5; }
+
+/* ---- 実績グリッド ---- */
+.ach-page { padding: var(--sp-4) 0; }
+.ach-page__header { margin-bottom: 12px; }
+.ach-page__summary { font-size: 1rem; font-weight: 700; color: var(--text-muted); }
+.ach-page__count   { font-size: 1.4rem; color: #9775FA; }
+.ach-category { margin-bottom: 20px; }
+.ach-category__title {
+  font-size: 0.85rem; font-weight: 700; color: var(--text-muted);
+  letter-spacing: 0.05em; margin-bottom: 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.07); padding-bottom: 4px;
+}
+.ach-grid {
+  display: flex; flex-direction: column; gap: 8px;
+}
+.ach-card {
+  display: flex; align-items: flex-start; gap: 12px;
+  background: var(--bg-tertiary); border-radius: var(--radius-md);
+  padding: 10px 12px; border: 1px solid transparent;
+}
+.ach-card--unlocked { border-color: rgba(151,117,250,0.3); background: rgba(151,117,250,0.06); }
+.ach-card--locked   { opacity: 0.55; }
+.ach-card__icon     { font-size: 1.8rem; flex-shrink: 0; line-height: 1; }
+.ach-card__body     { flex: 1; min-width: 0; }
+.ach-card__title    { font-weight: 700; font-size: 0.92rem; }
+.ach-card__desc     { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
+.ach-card__xp       { font-size: 0.75rem; color: #FFD700; font-weight: 600; margin-top: 4px; }
+.ach-card__progress { margin-top: 6px; display: flex; align-items: center; gap: 6px; font-size: 0.75rem; }
+.ach-card__bar      { font-family: monospace; color: #9775FA; letter-spacing: -1px; }
+.ach-card__prog-num { color: var(--text-muted); }
+
+/* ---- 統計ページ ---- */
+.stats-page { padding: var(--sp-2) 0 var(--sp-8); }
+.stats-section { margin-bottom: 20px; }
+.stats-section__title {
+  font-size: 0.88rem; font-weight: 700; color: var(--text-muted);
+  letter-spacing: 0.05em; margin-bottom: 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.07); padding-bottom: 4px;
+}
+.stats-summary-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+}
+.stats-card {
+  background: var(--bg-tertiary); border-radius: var(--radius-md);
+  padding: 10px 12px;
+}
+.stats-card__label { font-size: 0.72rem; color: var(--text-muted); margin-bottom: 4px; }
+.stats-card__value { font-size: 1.1rem; font-weight: 700; }
+.stats-chart-wrap {
+  background: var(--bg-tertiary); border-radius: var(--radius-md);
+  padding: 12px; overflow: hidden;
+}
+.stats-chart-wrap canvas { display: block; width: 100%; }
+.stats-rarity-list { display: flex; flex-direction: column; gap: 10px; }
+.stats-rarity-row {
+  display: grid;
+  grid-template-columns: 80px 40px 90px 36px 70px 1fr;
+  align-items: center; gap: 6px; font-size: 0.8rem;
+}
+.stats-rarity-row__name  { font-weight: 700; }
+.stats-rarity-row__rate  { font-weight: 700; text-align: right; }
+.stats-rarity-row__pnl   { font-weight: 700; text-align: right; }
+.stats-bar { font-family: monospace; letter-spacing: -1px; font-size: 0.85rem; }
+.stats-pair-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+}
+.stats-pair-card__name  {
+  font-weight: 800; font-size: 1rem; margin-bottom: 8px; color: #9775FA;
+}
+.stats-pair-card__row {
+  display: flex; justify-content: space-between;
+  font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 4px;
+}
+
+/* ---- 判定スコア詳細 ---- */
+.score-detail { }
+.score-detail__title { font-weight: 700; font-size: 1rem; margin-bottom: 12px; }
+.score-detail__score-wrap { text-align: center; margin-bottom: 16px; }
+.score-detail__circle {
+  display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
+  width: 100px; height: 100px; border-radius: 50%; border: 4px solid #888;
+  margin-bottom: 8px;
+}
+.score-detail__circle-num  { font-size: 2rem; font-weight: 900; line-height: 1; }
+.score-detail__circle-label { font-size: 0.8rem; color: var(--text-muted); }
+.score-detail__rank { font-weight: 700; font-size: 1rem; }
+.score-detail__table { margin-bottom: 16px; display: flex; flex-direction: column; gap: 4px; }
+.score-detail__row {
+  display: flex; justify-content: space-between;
+  font-size: 0.82rem; color: var(--text-secondary); padding: 4px 0;
+}
+.score-detail__row--rate {
+  border-top: 1px solid rgba(255,255,255,0.07);
+  margin-top: 2px; padding-top: 6px; font-weight: 700;
+}
+.score-detail__divider { height: 1px; background: rgba(255,255,255,0.07); margin: 8px 0; }
+.score-detail__empty { color: var(--text-muted); font-size: 0.85rem; }
+.score-detail__ranks { margin-top: 12px; }
+.score-detail__ranks-title { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px; }
+.score-detail__ranks-list { display: flex; gap: 6px; flex-wrap: wrap; }
+.score-detail__rank-badge {
+  padding: 3px 8px; border-radius: 4px; font-size: 0.78rem; font-weight: 700;
+  border: 1px solid currentColor;
+}
+.score-detail__rank-badge.is-active { border-color: transparent; }
+
+/* ---- 最近の実績 (ホーム) ---- */
+.recent-ach-list {
+  display: flex; flex-direction: column; gap: 6px;
+}
+.recent-ach-item {
+  display: flex; align-items: center; gap: 10px; font-size: 0.88rem;
+}
+.recent-ach-item__icon  { font-size: 1.3rem; }
+.recent-ach-item__title { color: var(--text-secondary); }
+
+@media (max-width: 400px) {
+  .stats-rarity-row {
+    grid-template-columns: 60px 36px 80px 34px 60px 1fr;
+    font-size: 0.73rem;
+  }
+}

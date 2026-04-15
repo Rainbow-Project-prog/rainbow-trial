@@ -1,0 +1,483 @@
+/* ==========================================================================
+ * Rainbow Trial — css/effects.css
+ * Phase 3 エフェクト・アニメーション専用スタイル
+ * ========================================================================== */
+
+/* --------------------------------------------------------------------------
+ * 1. アチーブメントトースト (右上からスライドイン)
+ * -------------------------------------------------------------------------- */
+.achievement-toast {
+  position: fixed;
+  top: 72px;
+  right: -360px;
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: linear-gradient(135deg, #1e1e2e 0%, #2a2a3e 100%);
+  border: 1px solid rgba(151, 117, 250, 0.5);
+  border-left: 4px solid #9775FA;
+  border-radius: 12px;
+  padding: 12px 16px;
+  min-width: 260px;
+  max-width: 340px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 16px rgba(151,117,250,0.2);
+  cursor: pointer;
+  transition: right 0.38s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
+}
+.achievement-toast--enter  { right: 16px; }
+.achievement-toast--leave  { right: -360px; opacity: 0; }
+
+.achievement-toast__icon  { font-size: 2rem; flex-shrink: 0; }
+.achievement-toast__body  { flex: 1; min-width: 0; }
+.achievement-toast__label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #9775FA;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.achievement-toast__title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 2px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.achievement-toast__xp {
+  font-size: 0.78rem;
+  color: #FFD700;
+  font-weight: 600;
+}
+
+/* --------------------------------------------------------------------------
+ * 2. レベルアップモーダル
+ * -------------------------------------------------------------------------- */
+.levelup-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9500;
+  background: rgba(0,0,0,0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: levelup-bg-in 0.3s ease;
+}
+@keyframes levelup-bg-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.levelup-modal__wrap {
+  position: relative;
+  text-align: center;
+  padding: 48px 32px 36px;
+  width: min(380px, 92vw);
+  background: linear-gradient(160deg, #12122a 0%, #1a1a3e 60%, #12122a 100%);
+  border: 1px solid rgba(151,117,250,0.4);
+  border-radius: 24px;
+  box-shadow: 0 0 60px rgba(151,117,250,0.3);
+  animation: levelup-card-in 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes levelup-card-in {
+  from { transform: scale(0.5) translateY(40px); opacity: 0; }
+  to   { transform: scale(1)   translateY(0);    opacity: 1; }
+}
+
+.levelup-modal__flash {
+  position: absolute;
+  inset: 0;
+  border-radius: 24px;
+  background: radial-gradient(circle, rgba(255,255,200,0.25) 0%, transparent 70%);
+  animation: levelup-flash 0.6s ease forwards;
+  pointer-events: none;
+}
+@keyframes levelup-flash {
+  0%   { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.levelup-modal__label {
+  font-size: 1.1rem;
+  font-weight: 900;
+  letter-spacing: 0.2em;
+  color: #FFD700;
+  text-shadow: 0 0 20px rgba(255,215,0,0.8);
+  animation: levelup-pulse 1s ease infinite alternate;
+}
+@keyframes levelup-pulse {
+  from { text-shadow: 0 0 10px rgba(255,215,0,0.5); }
+  to   { text-shadow: 0 0 30px rgba(255,215,0,1); }
+}
+
+.levelup-modal__num {
+  font-size: 3.5rem;
+  font-weight: 900;
+  color: #fff;
+  line-height: 1;
+  margin: 8px 0;
+}
+
+.levelup-modal__icon {
+  font-size: 3rem;
+  margin: 8px 0;
+  animation: levelup-spin 0.6s ease;
+}
+@keyframes levelup-spin {
+  from { transform: rotate(-180deg) scale(0); }
+  to   { transform: rotate(0deg)    scale(1); }
+}
+
+.levelup-modal__title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #9775FA;
+  margin: 6px 0;
+}
+
+.levelup-modal__from {
+  font-size: 0.8rem;
+  color: var(--text-muted, #888);
+  margin-bottom: 24px;
+}
+
+.levelup-modal__btn {
+  min-width: 160px;
+  font-size: 1rem;
+  padding: 12px 28px;
+}
+
+/* --------------------------------------------------------------------------
+ * 3. 紙吹雪キャンバス (TP HIT 演出)
+ * -------------------------------------------------------------------------- */
+#confetti-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 8000;
+}
+
+/* --------------------------------------------------------------------------
+ * 4. TP HIT / SL HIT 中央演出
+ * -------------------------------------------------------------------------- */
+.result-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 8500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.result-splash__inner {
+  text-align: center;
+  animation: splash-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+@keyframes splash-in {
+  from { transform: scale(0.2); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+.result-splash__inner.is-out {
+  animation: splash-out 0.4s ease forwards;
+}
+@keyframes splash-out {
+  from { transform: scale(1);   opacity: 1; }
+  to   { transform: scale(1.4); opacity: 0; }
+}
+
+.result-splash__icon  { font-size: 4rem; display: block; }
+.result-splash__label {
+  font-size: 2.2rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  display: block;
+  margin-top: 6px;
+}
+.result-splash__pnl {
+  font-size: 1.4rem;
+  font-weight: 700;
+  display: block;
+  margin-top: 8px;
+  animation: pnl-count 0.6s ease 0.3s both;
+}
+@keyframes pnl-count {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.result-splash--tp .result-splash__label { color: #4CAF50; text-shadow: 0 0 20px rgba(76,175,80,0.8); }
+.result-splash--sl .result-splash__label { color: #F44336; }
+
+/* --------------------------------------------------------------------------
+ * 5. 全画面フラッシュ
+ * -------------------------------------------------------------------------- */
+.screen-flash {
+  position: fixed;
+  inset: 0;
+  z-index: 7900;
+  pointer-events: none;
+  opacity: 0;
+}
+.screen-flash--green   { background: rgba(76,175,80,0.35); }
+.screen-flash--red     { background: rgba(244,67,54,0.25); }
+.screen-flash--purple  { background: rgba(151,117,250,0.4); }
+.screen-flash--orange  { background: rgba(255,152,0,0.45); }
+.screen-flash--rainbow {
+  background: linear-gradient(135deg,
+    rgba(255,0,0,0.3), rgba(255,165,0,0.3), rgba(255,255,0,0.3),
+    rgba(0,128,0,0.3), rgba(0,0,255,0.3), rgba(75,0,130,0.3),
+    rgba(148,0,211,0.3));
+}
+
+.screen-flash--active {
+  animation: flash-anim 0.5s ease forwards;
+}
+@keyframes flash-anim {
+  0%   { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* --------------------------------------------------------------------------
+ * 6. パーティクルキャンバス (レアリティ演出)
+ * -------------------------------------------------------------------------- */
+#particle-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 7800;
+}
+
+/* --------------------------------------------------------------------------
+ * 7. LEGENDARY 中央バッジ演出
+ * -------------------------------------------------------------------------- */
+.legendary-badge {
+  position: fixed;
+  inset: 0;
+  z-index: 8200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.legendary-badge__inner {
+  text-align: center;
+  animation: legendary-in 0.6s cubic-bezier(0.34,1.56,0.64,1) forwards;
+}
+@keyframes legendary-in {
+  from { transform: scale(0) rotate(-20deg); opacity: 0; }
+  to   { transform: scale(1) rotate(0deg);   opacity: 1; }
+}
+.legendary-badge__inner.is-out {
+  animation: legendary-out 0.5s ease forwards;
+}
+@keyframes legendary-out {
+  from { transform: scale(1);   opacity: 1; }
+  to   { transform: scale(1.5); opacity: 0; }
+}
+.legendary-badge__icon  { font-size: 3rem; display: block; }
+.legendary-badge__label {
+  font-size: 2rem;
+  font-weight: 900;
+  color: #FFD700;
+  text-shadow: 0 0 30px rgba(255,215,0,0.9);
+  display: block;
+  letter-spacing: 0.1em;
+  animation: rainbow-text 2s linear infinite;
+}
+@keyframes rainbow-text {
+  0%   { filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(360deg); }
+}
+
+/* --------------------------------------------------------------------------
+ * 8. 連勝バナー (ホーム画面)
+ * -------------------------------------------------------------------------- */
+.streak-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(90deg, rgba(255,80,0,0.15), rgba(255,160,0,0.1));
+  border: 1px solid rgba(255,100,0,0.3);
+  border-radius: 10px;
+  padding: 8px 14px;
+  margin-top: 8px;
+}
+.streak-banner__fire  { font-size: 1.4rem; animation: fire-flicker 0.6s ease infinite alternate; }
+@keyframes fire-flicker {
+  from { transform: scale(1)    rotate(-3deg); }
+  to   { transform: scale(1.1)  rotate(3deg); }
+}
+.streak-banner__text  { font-size: 0.95rem; font-weight: 700; color: #FF8C00; }
+.streak-banner__sub   { font-size: 0.75rem; color: var(--text-muted, #888); margin-top: 1px; }
+
+/* --------------------------------------------------------------------------
+ * 9. 炎パーティクルオーバーレイ (5連勝以上)
+ * -------------------------------------------------------------------------- */
+#flame-canvas {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  height: 30%;
+  pointer-events: none;
+  z-index: 100;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+#flame-canvas.is-active { opacity: 1; }
+
+/* --------------------------------------------------------------------------
+ * 10. プロフィールカード (ホーム画面)
+ * -------------------------------------------------------------------------- */
+.profile-card {
+  background: linear-gradient(135deg, #1a1a2e 0%, #252545 100%);
+  border: 1px solid rgba(151,117,250,0.25);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+.profile-card__greeting {
+  font-size: 0.85rem;
+  color: var(--text-muted, #888);
+  margin-bottom: 8px;
+}
+.profile-card__level-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.profile-card__lv-badge {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #FFD700;
+  background: rgba(255,215,0,0.1);
+  border: 1px solid rgba(255,215,0,0.3);
+  border-radius: 20px;
+  padding: 3px 10px;
+  white-space: nowrap;
+}
+.profile-card__title {
+  font-size: 0.9rem;
+  color: #9775FA;
+  font-weight: 600;
+  flex: 1;
+}
+
+.xp-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  flex-wrap: wrap;
+}
+.xp-bar__level { font-weight: 700; color: #FFD700; }
+.xp-bar__title { color: var(--text-muted, #888); }
+.xp-bar__bar   { color: #9775FA; font-family: monospace; letter-spacing: -1px; }
+.xp-bar__xp    { color: var(--text-muted, #888); margin-left: auto; }
+
+/* --------------------------------------------------------------------------
+ * 11. XP 獲得ポップアップ (+30 XP のふわっと表示)
+ * -------------------------------------------------------------------------- */
+.xp-popup {
+  position: fixed;
+  z-index: 8800;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #FFD700;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.6);
+  pointer-events: none;
+  white-space: nowrap;
+  animation: xp-float 1.4s ease forwards;
+}
+@keyframes xp-float {
+  0%   { transform: translateY(0)   scale(1);    opacity: 1; }
+  60%  { transform: translateY(-40px) scale(1.1); opacity: 1; }
+  100% { transform: translateY(-70px) scale(0.8); opacity: 0; }
+}
+
+/* --------------------------------------------------------------------------
+ * 12. デイリーコンプモーダル
+ * -------------------------------------------------------------------------- */
+.daily-complete-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9200;
+  background: rgba(0,0,0,0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.daily-complete-card {
+  background: linear-gradient(135deg, #1a2a1a, #1a3a1a);
+  border: 1px solid rgba(76,175,80,0.4);
+  border-radius: 20px;
+  padding: 36px 28px;
+  text-align: center;
+  max-width: 320px;
+  width: 90%;
+  animation: levelup-card-in 0.4s cubic-bezier(0.34,1.56,0.64,1);
+}
+.daily-complete-card__emoji { font-size: 3rem; margin-bottom: 12px; }
+.daily-complete-card__title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #4CAF50;
+  margin-bottom: 10px;
+}
+.daily-complete-card__body {
+  font-size: 0.9rem;
+  color: var(--text-muted, #aaa);
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+.daily-complete-card__btn { min-width: 140px; }
+
+/* --------------------------------------------------------------------------
+ * 13. ボタンマイクロインタラクション
+ * -------------------------------------------------------------------------- */
+.btn--tap-effect:active,
+button:not([disabled]):active {
+  transform: scale(0.96);
+  transition: transform 0.08s ease;
+}
+
+/* --------------------------------------------------------------------------
+ * 14. レアリティシグナル受信バッジ
+ * -------------------------------------------------------------------------- */
+.rarity-badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+  letter-spacing: 0.05em;
+  vertical-align: middle;
+}
+.rarity-badge--rare      { background: rgba(156,39,176,0.2); color: #CE93D8; border: 1px solid rgba(156,39,176,0.4); }
+.rarity-badge--epic      { background: rgba(255,152,0,0.2);  color: #FFCC80; border: 1px solid rgba(255,152,0,0.4); }
+.rarity-badge--legendary {
+  background: linear-gradient(90deg, rgba(255,0,0,0.15), rgba(255,165,0,0.15), rgba(0,128,0,0.15), rgba(0,0,255,0.15));
+  color: #FFD700;
+  border: 1px solid rgba(255,215,0,0.5);
+  animation: rainbow-text 2s linear infinite;
+}
+
+/* --------------------------------------------------------------------------
+ * 15. prefers-reduced-motion 対応
+ * -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration:   0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration:  0.01ms !important;
+  }
+}

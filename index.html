@@ -48,6 +48,7 @@
   <link rel="stylesheet" href="css/style.css?v=20260416-pwa">
   <link rel="stylesheet" href="css/components.css?v=20260416-pwa">
   <link rel="stylesheet" href="css/chart.css?v=20260416-pwa">
+  <link rel="stylesheet" href="css/effects.css?v=20260416-p3">
 
   <style>
     /* 画面切替(index 固有) */
@@ -90,7 +91,6 @@
       </div>
       <div class="app-header__day" id="header-day">Day 1 / 7</div>
       <button class="app-header__settings" id="header-settings" type="button" aria-label="設定">⚙️</button>
-      <div class="app-header__capital mono" id="header-capital" role="button" tabindex="0" aria-label="現在の仮想資金">¥300,000</div>
     </div>
   </header>
 
@@ -125,9 +125,11 @@
     <!-- ----- Screen: メイン(タブ) ------------------------------------------ -->
     <section id="screen-main" class="screen is-active">
       <div class="app-main">
-        <div class="panel is-active" data-panel="home" id="panel-home" aria-label="ホーム"></div>
-        <div class="panel"           data-panel="signals" id="panel-signals" aria-label="シグナル一覧"></div>
-        <div class="panel"           data-panel="history" id="panel-history" aria-label="トレード履歴"></div>
+        <div class="panel is-active" data-panel="home"         id="panel-home"         aria-label="ホーム"></div>
+        <div class="panel"           data-panel="signals"      id="panel-signals"      aria-label="シグナル一覧"></div>
+        <div class="panel"           data-panel="history"      id="panel-history"      aria-label="トレード履歴"></div>
+        <div class="panel"           data-panel="stats"        id="panel-stats"        aria-label="統計"></div>
+        <div class="panel"           data-panel="achievements" id="panel-achievements" aria-label="実績"></div>
       </div>
     </section>
 
@@ -162,6 +164,14 @@
       <button class="tabbar__btn" data-tab="history" type="button">
         <span class="tabbar__icon" aria-hidden="true">📜</span>
         <span>履歴</span>
+      </button>
+      <button class="tabbar__btn" data-tab="stats" type="button">
+        <span class="tabbar__icon" aria-hidden="true">📈</span>
+        <span>統計</span>
+      </button>
+      <button class="tabbar__btn" data-tab="achievements" type="button">
+        <span class="tabbar__icon" aria-hidden="true">🏆</span>
+        <span>実績</span>
       </button>
     </div>
   </nav>
@@ -209,8 +219,12 @@
        アプリ本体: 依存関係順に読み込み
        ========================================================================== -->
   <!-- データ層 -->
-  <script src="js/storage.js?v=20260416-pwa"></script>
+  <script src="js/storage.js?v=20260416-p3"></script>
   <script src="data/scenarios.js?v=20260416-pwa"></script>
+
+  <!-- Phase 3: データ定義 -->
+  <script src="data/achievements-list.js?v=20260416-p3"></script>
+  <script src="data/missions-list.js?v=20260416-p3"></script>
 
   <!-- 状態・通知 -->
   <script src="js/game-state.js?v=20260416-pwa"></script>
@@ -222,8 +236,18 @@
   <script src="js/chart.js?v=20260416-pwa"></script>
   <script src="js/trade.js?v=20260416-pwa"></script>
 
+  <!-- Phase 3: コアシステム -->
+  <script src="js/sound.js?v=20260416-p3"></script>
+  <script src="js/effects.js?v=20260416-p3"></script>
+  <script src="js/level-system.js?v=20260416-p3"></script>
+  <script src="js/achievements.js?v=20260416-p3"></script>
+  <script src="js/missions.js?v=20260416-p3"></script>
+  <script src="js/judgment-score.js?v=20260416-p3"></script>
+  <script src="js/stats.js?v=20260416-p3"></script>
+
   <!-- 統合層 -->
-  <script src="js/app.js?v=20260416-pwa"></script>
+  <script src="js/app.js?v=20260416-p3"></script>
+  <script src="js/phase3-hooks.js?v=20260416-p3"></script>
 
 </body>
 </html>
