@@ -4,7 +4,7 @@
    ========================================================================== */
 
 /* ==========================================================================
-   1. チャートラッパー
+   1. チャートラッパー (MT4 モバイル風)
    ========================================================================== */
 .chart {
   position: relative;
@@ -12,12 +12,12 @@
   height: 52vh;
   min-height: 340px;
   max-height: 560px;
-  background: var(--chart-bg);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
+  background: #000000;
+  border: 1px solid #2A2A2A;
+  border-radius: 2px;        /* MT4 は直線的 */
   overflow: hidden;
   margin-bottom: var(--sp-4);
-  touch-action: none;        /* ジェスチャを自前処理 */
+  touch-action: none;
   user-select: none;
   -webkit-user-select: none;
 }
@@ -39,78 +39,53 @@
 }
 
 /* ==========================================================================
-   2. 凡例(左上)
+   2. MT4 タイトルバー (最上段全幅): 例 "USDJPY,M15  154.250"
    ========================================================================== */
-.chart__legend {
+.chart__pair--mt4 {
   position: absolute;
-  top: 10px; left: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 8px 10px;
-  background: rgba(19, 23, 34, 0.72);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: var(--radius-sm);
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  color: var(--text-secondary);
-  pointer-events: none;
-  z-index: 2;
-}
-.chart__legend-row {
+  top: 0; left: 0; right: 0;
+  height: 22px;
   display: flex;
   align-items: center;
-  gap: 6px;
-  white-space: nowrap;
-}
-.chart__legend-dot {
-  display: inline-block;
-  width: 8px; height: 8px;
-  border-radius: 2px;
-}
-.chart__legend-dot--ma20   { background: var(--ma-20); }
-.chart__legend-dot--ma80   { background: var(--ma-80); }
-.chart__legend-dot--entry  { background: var(--entry-line); }
-.chart__legend-dot--tp     { background: var(--tp-line); }
-.chart__legend-dot--sl     { background: var(--sl-line); }
-
-.chart__legend strong {
-  color: var(--text-primary);
-  font-weight: 700;
-}
-
-/* ==========================================================================
-   3. 通貨ペア + OHLC(右上)
-   ========================================================================== */
-.chart__pair {
-  position: absolute;
-  top: 10px; right: 12px;
-  padding: 8px 10px;
-  background: rgba(19, 23, 34, 0.72);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: var(--radius-sm);
-  font-family: var(--font-mono);
+  justify-content: space-between;
+  padding: 0 8px;
+  background: #1A1A1A;
+  border-bottom: 1px solid #2A2A2A;
+  font-family: "JetBrains Mono", "Consolas", monospace;
   font-size: 0.72rem;
-  color: var(--text-secondary);
-  text-align: right;
+  color: #CFCFCF;
   pointer-events: none;
   z-index: 2;
 }
-.chart__pair strong {
-  display: block;
-  color: var(--text-primary);
+.chart__pair-symbol {
   font-weight: 700;
-  font-size: 0.82rem;
-  letter-spacing: 0.4px;
+  color: #FFFFFF;
+  letter-spacing: 0.3px;
 }
 .chart__pair-price {
   font-weight: 700;
-  color: var(--entry-line);
-  margin-top: 2px;
+  color: #FFEB3B;  /* MT4 Bid 風 */
+}
+
+/* ==========================================================================
+   3. MT4 風インジケーター凡例 (左上、タイトルバー直下)
+   ========================================================================== */
+.chart__legend--mt4 {
+  position: absolute;
+  top: 26px; left: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-family: "JetBrains Mono", "Consolas", monospace;
+  font-size: 0.68rem;
+  color: #CFCFCF;
+  pointer-events: none;
+  z-index: 2;
+  text-shadow: 0 0 3px #000;
+}
+.chart__legend-row {
+  white-space: nowrap;
+  line-height: 1.2;
 }
 
 /* ==========================================================================
@@ -118,16 +93,17 @@
    ========================================================================== */
 .chart__hint {
   position: absolute;
-  bottom: 8px; left: 50%;
+  bottom: 6px; left: 50%;
   transform: translateX(-50%);
-  padding: 4px 10px;
-  background: rgba(19, 23, 34, 0.72);
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: var(--radius-pill);
-  font-size: 0.68rem;
-  color: var(--text-muted);
+  padding: 3px 10px;
+  background: rgba(0, 0, 0, 0.75);
+  border: 1px solid #3A3A3A;
+  border-radius: 2px;
+  font-family: "JetBrains Mono", "Consolas", monospace;
+  font-size: 0.66rem;
+  color: #B0B0B0;
   pointer-events: none;
-  opacity: 0.8;
+  opacity: 0.85;
   z-index: 2;
   transition: opacity var(--dur-3) var(--ease);
 }
@@ -146,15 +122,15 @@
 .chart__ctrl {
   width: 34px; height: 34px;
   display: grid; place-items: center;
-  background: rgba(42, 49, 66, 0.85);
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: var(--radius-sm);
-  color: var(--text-secondary);
+  background: #1A1A1A;
+  border: 1px solid #3A3A3A;
+  border-radius: 2px;
+  color: #CFCFCF;
   font-size: 0.95rem;
   cursor: pointer;
   transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
 }
-.chart__ctrl:hover { background: rgba(58, 67, 88, 0.9); color: var(--text-primary); }
+.chart__ctrl:hover { background: #2A2A2A; color: #FFFFFF; }
 .chart__ctrl:active { transform: translateY(1px); }
 
 /* ==========================================================================
@@ -162,19 +138,19 @@
    ========================================================================== */
 .chart__tooltip {
   position: absolute;
-  top: 50px; left: 12px;
-  padding: 8px 10px;
-  background: rgba(26, 31, 46, 0.95);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-sm);
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  color: var(--text-secondary);
+  top: 60px; left: 8px;
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.92);
+  border: 1px solid #3A3A3A;
+  border-radius: 2px;
+  font-family: "JetBrains Mono", "Consolas", monospace;
+  font-size: 0.70rem;
+  color: #DCDCDC;
   pointer-events: none;
   z-index: 3;
   opacity: 0;
   transition: opacity var(--dur-1) var(--ease);
-  min-width: 150px;
+  min-width: 140px;
 }
 .chart__tooltip.is-visible { opacity: 1; }
 .chart__tooltip-row {
@@ -240,8 +216,8 @@
    9. レスポンシブ調整
    ========================================================================== */
 @media (max-width: 419px) {
-  .chart__legend, .chart__pair { font-size: 0.66rem; padding: 6px 8px; }
-  .chart__pair strong { font-size: 0.76rem; }
+  .chart__pair--mt4 { height: 20px; font-size: 0.68rem; padding: 0 6px; }
+  .chart__legend--mt4 { top: 22px; font-size: 0.64rem; }
   .chart__ctrl { width: 30px; height: 30px; }
 }
 @media (min-width: 820px) {

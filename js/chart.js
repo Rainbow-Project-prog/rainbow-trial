@@ -35,29 +35,30 @@
   /* --------------------------------------------------------------------------
    * 1. 色・レイアウト定数
    * -------------------------------------------------------------------------- */
+  // MT4 モバイル風の配色(黒背景、実体塗りローソク、ブライトカラー)
   const COLORS = {
-    bg:         '#131722',
-    grid:       '#2A3145',
-    gridStrong: '#3A4358',
-    candleUp:   '#26A69A',
-    candleDown: '#EF5350',
-    ma20:       '#2196F3',
-    ma80:       '#FF6B6B',
-    entry:      '#FFD700',
-    tp:         '#4CAF50',
-    sl:         '#F44336',
-    axis:       '#6B7588',
-    text:       '#A8B2C7',
-    textStrong: '#F5F7FA',
-    crosshair:  '#6B7588',
-    livePrice:  '#FFD700'
+    bg:         '#000000',
+    grid:       '#1C1C1C',
+    gridStrong: '#2A2A2A',
+    candleUp:   '#26C281',   // 陽線: 緑実体
+    candleDown: '#E94560',   // 陰線: 赤実体
+    ma20:       '#FFD54F',   // Yellow
+    ma80:       '#29B6F6',   // LightBlue
+    entry:      '#FFFFFF',
+    tp:         '#00E676',
+    sl:         '#FF5252',
+    axis:       '#B0B0B0',
+    text:       '#CFCFCF',
+    textStrong: '#FFFFFF',
+    crosshair:  '#DCDCDC',
+    livePrice:  '#FFEB3B'    // Bid/Ask 風ハイライト
   };
 
   const PAD = {
-    right:  64,   // 価格軸の幅
-    bottom: 28,   // 時間軸の高さ
-    top:    12,
-    left:   8
+    right:  68,   // 価格軸の幅(MT4 は広め)
+    bottom: 22,   // 時間軸の高さ
+    top:    26,   // 上部シンボルバーの分を確保
+    left:   4
   };
 
   const MIN_VISIBLE_BARS = 12;
@@ -161,29 +162,26 @@
     }
 
     _mountLegend() {
+      // MT4 モバイル風: インジケーター名をチャート左上に重ねて表示
       if (this.container.querySelector('.chart__legend')) return;
       const el = document.createElement('div');
-      el.className = 'chart__legend';
+      el.className = 'chart__legend chart__legend--mt4';
       el.innerHTML =
-        '<div class="chart__legend-row"><span class="chart__legend-dot chart__legend-dot--ma20"></span>MA20</div>' +
-        '<div class="chart__legend-row"><span class="chart__legend-dot chart__legend-dot--ma80"></span>MA80</div>' +
-        '<div class="chart__legend-row"><span class="chart__legend-dot chart__legend-dot--entry"></span>Entry</div>' +
-        '<div class="chart__legend-row"><span class="chart__legend-dot chart__legend-dot--tp"></span>TP</div>' +
-        '<div class="chart__legend-row"><span class="chart__legend-dot chart__legend-dot--sl"></span>SL</div>';
+        '<div class="chart__legend-row" style="color:#FFD54F">Moving Average(20)</div>' +
+        '<div class="chart__legend-row" style="color:#29B6F6">Moving Average(80)</div>';
       this.container.appendChild(el);
     }
 
     _mountPairHeader() {
+      // MT4 モバイル風のタイトルバー: 「USDJPY,M15」左寄せ + 右に Bid 価格
       if (this.container.querySelector('.chart__pair')) return;
       const el = document.createElement('div');
-      el.className = 'chart__pair';
-      const pair = this.signal.pair === 'USDJPY' ? 'USD/JPY' :
-                   this.signal.pair === 'BTCUSD' ? 'BTC/USD' : this.signal.pair;
-      const tf = '15m';  // 1本=15分(scenarios.js に合わせる)
+      el.className = 'chart__pair chart__pair--mt4';
+      const pairRaw = this.signal.pair;
+      const tf = 'M15';
       el.innerHTML =
-        '<strong>' + pair + '</strong>' +
-        '<div>' + tf + '</div>' +
-        '<div class="chart__pair-price" data-role="price">' + this._fmtPrice(this.signal.entry) + '</div>';
+        '<span class="chart__pair-symbol">' + pairRaw + ',' + tf + '</span>' +
+        '<span class="chart__pair-price" data-role="price">' + this._fmtPrice(this.signal.entry) + '</span>';
       this.container.appendChild(el);
     }
 
@@ -364,64 +362,71 @@
     }
 
     _drawHorizontalGrid(ctx, plot, range) {
+      // MT4 モバイル風: 点線の薄いグリッド
       const span = range.max - range.min;
       const step = niceStep(span, 6);
       let start = Math.ceil(range.min / step) * step;
+      ctx.save();
       ctx.lineWidth = 1;
+      ctx.setLineDash([1, 3]);
+      ctx.strokeStyle = COLORS.grid;
       for (let p = start; p <= range.max; p += step) {
         const y = Math.round(this._yForPrice(p, plot, range)) + 0.5;
-        ctx.strokeStyle = COLORS.grid;
         ctx.beginPath();
         ctx.moveTo(plot.x, y);
         ctx.lineTo(plot.x + plot.w, y);
         ctx.stroke();
       }
+      ctx.restore();
     }
 
     _drawVerticalGrid(ctx, plot) {
       const count = this.viewEnd - this.viewStart + 1;
       const step = count <= 20 ? 5 : (count <= 35 ? 8 : 10);
+      ctx.save();
       ctx.lineWidth = 1;
+      ctx.setLineDash([1, 3]);
+      ctx.strokeStyle = COLORS.grid;
       for (let i = this.viewStart; i <= this.viewEnd; i++) {
         if (((i - this.viewStart) % step) !== 0) continue;
         const x = Math.round(this._xForIndex(i, plot)) + 0.5;
-        ctx.strokeStyle = COLORS.grid;
         ctx.beginPath();
         ctx.moveTo(x, plot.y);
         ctx.lineTo(x, plot.y + plot.h);
         ctx.stroke();
       }
+      ctx.restore();
     }
 
     _drawHLine(ctx, plot, range, price, color, label) {
+      // MT4 風: Entry は実線白、TP/SL は破線(MT4 の水平線オブジェクト風)
       if (price < range.min || price > range.max) return;
       const y = Math.round(this._yForPrice(price, plot, range)) + 0.5;
       ctx.save();
       ctx.strokeStyle = color;
-      ctx.lineWidth = 1.25;
-      ctx.setLineDash([4, 4]);
+      ctx.lineWidth = label === 'Entry' ? 1 : 1.25;
+      ctx.setLineDash(label === 'Entry' ? [] : [5, 3]);
       ctx.beginPath();
       ctx.moveTo(plot.x, y);
       ctx.lineTo(plot.x + plot.w, y);
       ctx.stroke();
       ctx.setLineDash([]);
-      // 右端の価格ラベル
       this._drawPriceTag(ctx, plot, y, price, color, label);
       ctx.restore();
     }
 
     _drawPriceTag(ctx, plot, y, price, bg, label) {
+      // MT4 モバイル風: 右端に矩形タグ。黒字のコントラストで読みやすく
       const text = this._fmtPrice(price);
-      ctx.font = '700 11px JetBrains Mono, monospace';
+      ctx.font = '700 11px "JetBrains Mono", "Consolas", monospace';
       ctx.textBaseline = 'middle';
       const padX = 6;
-      const padY = 3;
       const textW = ctx.measureText(text).width;
-      const tagW = textW + padX * 2 + (label ? ctx.measureText(label).width + 6 : 0);
+      const tagW = Math.min(textW + padX * 2 + (label ? ctx.measureText(label).width + 6 : 0), PAD.right - 2);
       const x = plot.x + plot.w + 2;
       ctx.fillStyle = bg;
-      ctx.fillRect(x, y - 9, Math.min(tagW, PAD.right - 2), 18);
-      ctx.fillStyle = '#0F1419';
+      ctx.fillRect(x, y - 9, tagW, 18);
+      ctx.fillStyle = '#000000';
       if (label) {
         ctx.textAlign = 'left';
         ctx.fillText(label, x + padX, y);
@@ -455,9 +460,10 @@
     }
 
     _drawCandles(ctx, plot, range) {
+      // MT4 モバイル風: 陽線/陰線ともに実体塗りつぶし
       const count = this.viewEnd - this.viewStart + 1;
       const step = plot.w / count;
-      const bodyW = Math.max(1.5, Math.min(step * 0.72, 14));
+      const bodyW = Math.max(1.5, Math.min(step * 0.76, 16));
       ctx.lineWidth = 1;
       for (let i = this.viewStart; i <= this.viewEnd; i++) {
         const c = this._getCandle(i);
@@ -471,29 +477,20 @@
         ctx.moveTo(Math.round(x) + 0.5, this._yForPrice(c.h, plot, range));
         ctx.lineTo(Math.round(x) + 0.5, this._yForPrice(c.l, plot, range));
         ctx.stroke();
-        // ボディ
+        // ボディ(両方向とも塗りつぶし)
         const yOpen  = this._yForPrice(c.o, plot, range);
         const yClose = this._yForPrice(c.c, plot, range);
         const bodyTop = Math.min(yOpen, yClose);
         const bodyH = Math.max(1, Math.abs(yClose - yOpen));
         const bx = Math.round(x - bodyW / 2) + 0.5;
-        if (isUp) {
-          // 陽線: 輪郭のみ + 少し塗り
-          ctx.fillStyle = COLORS.bg;
-          ctx.fillRect(bx, bodyTop, bodyW, bodyH);
-          ctx.strokeStyle = color;
-          ctx.strokeRect(bx, bodyTop, bodyW, bodyH);
-        } else {
-          // 陰線: 塗りつぶし
-          ctx.fillStyle = color;
-          ctx.fillRect(bx, bodyTop, bodyW, bodyH);
-        }
+        ctx.fillStyle = color;
+        ctx.fillRect(bx, bodyTop, bodyW, bodyH);
 
-        // 形成中の最終ライブ足: 金色のアウトラインで強調
+        // 形成中の最終ライブ足: 黄色点線で強調(MT4 の現在足強調風)
         if (c.isForming) {
           ctx.save();
           ctx.strokeStyle = COLORS.livePrice;
-          ctx.lineWidth = 1.5;
+          ctx.lineWidth = 1.2;
           ctx.setLineDash([3, 2]);
           ctx.strokeRect(bx - 1, bodyTop - 1, bodyW + 2, bodyH + 2);
           ctx.setLineDash([]);
@@ -538,12 +535,13 @@
     }
 
     _drawPriceAxis(ctx, plot, range) {
+      // MT4 モバイル風: 右側に白系の等幅フォントで価格
       const span = range.max - range.min;
       const step = niceStep(span, 6);
       let start = Math.ceil(range.min / step) * step;
       ctx.save();
-      ctx.font = '400 11px JetBrains Mono, monospace';
-      ctx.fillStyle = COLORS.axis;
+      ctx.font = '500 11px "JetBrains Mono", "Consolas", monospace';
+      ctx.fillStyle = COLORS.text;
       ctx.textAlign = 'left';
       ctx.textBaseline = 'middle';
       for (let p = start; p <= range.max; p += step) {
@@ -557,8 +555,8 @@
       const count = this.viewEnd - this.viewStart + 1;
       const step = count <= 20 ? 5 : (count <= 35 ? 8 : 10);
       ctx.save();
-      ctx.font = '400 10px JetBrains Mono, monospace';
-      ctx.fillStyle = COLORS.axis;
+      ctx.font = '500 10px "JetBrains Mono", "Consolas", monospace';
+      ctx.fillStyle = COLORS.text;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
       for (let i = this.viewStart; i <= this.viewEnd; i++) {
@@ -567,7 +565,7 @@
         if (!c) continue;
         const x = this._xForIndex(i, plot);
         const label = c.time || (c.isLive ? 'LIVE' : '');
-        ctx.fillText(label, x, plot.y + plot.h + 6);
+        ctx.fillText(label, x, plot.y + plot.h + 4);
       }
       ctx.restore();
     }
@@ -597,9 +595,9 @@
       ctx.lineTo(plot.x + plot.w, Math.round(y) + 0.5);
       ctx.stroke();
       ctx.setLineDash([]);
-      // 価格ラベル(右側)
+      // 価格ラベル(右側) — MT4 風の白背景 + 黒文字
       const price = this._priceForY(y, plot, range);
-      this._drawPriceTag(ctx, plot, y, price, '#2A3142', '');
+      this._drawPriceTag(ctx, plot, y, price, '#E0E0E0', '');
       ctx.restore();
       // tooltip 更新
       if (this.tooltip) {
