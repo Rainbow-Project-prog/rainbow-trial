@@ -400,18 +400,28 @@
       var self = this;
       this._os = this.detectOS();
 
-      // Android/PC: beforeinstallprompt キャプチャ
-      global.addEventListener('beforeinstallprompt', function (e) {
-        e.preventDefault();
-        self.deferredPrompt = e;
-        // iOS 以外はボタン文言を「1タップ」に変更
+      // <head> で早期キャプチャ済みのプロンプトを引き継ぐ
+      if (global._deferredInstallPrompt) {
+        self.deferredPrompt = global._deferredInstallPrompt;
+        global._deferredInstallPrompt = null;
         if (self._os !== 'ios') _updateButtonLabels(true);
-      });
+        console.log('[PWA] InstallHandler: picked up early-captured prompt');
+      }
 
-      // インストール完了イベント
-      global.addEventListener('appinstalled', function () {
-        self.onInstalled();
-      });
+      // 以降に発火する場合も捕捉(二重登録防止)
+      if (!this._initDone) {
+        this._initDone = true;
+        global.addEventListener('beforeinstallprompt', function (e) {
+          e.preventDefault();
+          self.deferredPrompt = e;
+          if (self._os !== 'ios') _updateButtonLabels(true);
+          console.log('[PWA] beforeinstallprompt received');
+        });
+
+        global.addEventListener('appinstalled', function () {
+          self.onInstalled();
+        });
+      }
 
       // スタンドアロン起動中は全インストールUIを非表示
       if (this.isStandalone()) {

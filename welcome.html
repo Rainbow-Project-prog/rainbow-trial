@@ -27,6 +27,16 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
+  <!-- beforeinstallprompt を最速でキャプチャ -->
+  <script>
+    window._deferredInstallPrompt = null;
+    window.addEventListener('beforeinstallprompt', function(e) {
+      e.preventDefault();
+      window._deferredInstallPrompt = e;
+      console.log('[PWA] beforeinstallprompt captured early (welcome)');
+    });
+  </script>
+
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/components.css">
   <link rel="stylesheet" href="css/install.css">
@@ -186,8 +196,21 @@
         仮想資金 <strong>¥300,000</strong> でスタートします。
       </p>
 
+      <button type="button" id="pwa-diag-btn" style="background:none;border:none;color:var(--text-muted);font-size:0.72rem;cursor:pointer;margin-top:var(--sp-3);text-decoration:underline;padding:0;">🔍 PWA診断</button>
+
     </div>
   </main>
+
+  <!-- PWA診断モーダル -->
+  <div class="overlay" id="pwa-diag-overlay" role="dialog" aria-modal="true" aria-labelledby="pwa-diag-title">
+    <div class="overlay__card" style="max-width: 520px;">
+      <h2 id="pwa-diag-title" style="font-size: 1.1rem; margin-bottom: var(--sp-4);">🔍 PWA 診断</h2>
+      <div id="pwa-diag-body" style="font-size: 0.85rem; line-height: 1.8;"></div>
+      <div style="display:flex; justify-content:flex-end; margin-top: var(--sp-5);">
+        <button class="btn btn--primary" id="close-pwa-diag">閉じる</button>
+      </div>
+    </div>
+  </div>
 
   <!-- 利用規約モーダル(簡易) -->
   <div class="overlay" id="terms-overlay" role="dialog" aria-modal="true" aria-labelledby="terms-title">
@@ -332,6 +355,101 @@
       // 起動時にニックネーム入力にフォーカス(モバイルは除く=スクロール防止)
       if (!/Mobi|Android/i.test(navigator.userAgent)) {
         setTimeout(function () { nicknameEl.focus(); }, 200);
+      }
+
+      // --- PWA 診断 -----------------------------------------------------------
+      var diagOverlay  = document.getElementById('pwa-diag-overlay');
+      var diagBody     = document.getElementById('pwa-diag-body');
+      var closeDiagBtn = document.getElementById('close-pwa-diag');
+      var diagBtn      = document.getElementById('pwa-diag-btn');
+
+      function runDiag() {
+        var rows = [];
+
+        // 1. Service Worker 登録状態
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistration('./').then(function (reg) {
+            var swStatus = reg
+              ? ('登録済み ✅ (scope: ' + reg.scope + ', state: ' + (reg.active ? reg.active.state : 'waiting') + ')')
+              : '未登録 ❌';
+            rows.push(['Service Worker', swStatus]);
+            renderRows(rows);
+          }).catch(function (e) {
+            rows.push(['Service Worker', '取得エラー: ' + e.message]);
+            renderRows(rows);
+          });
+        } else {
+          rows.push(['Service Worker', 'サポートされていない ❌']);
+        }
+
+        // 2. Manifest 読み込み状態
+        var manifestLink = document.querySelector('link[rel="manifest"]');
+        if (manifestLink) {
+          fetch(manifestLink.href).then(function (r) {
+            rows.push(['Manifest', r.ok ? '読み込み成功 ✅ (' + manifestLink.href + ')' : 'HTTP ' + r.status + ' ❌']);
+            renderRows(rows);
+          }).catch(function (e) {
+            rows.push(['Manifest', '取得エラー ❌ — ' + e.message]);
+            renderRows(rows);
+          });
+        } else {
+          rows.push(['Manifest', 'link[rel=manifest] なし ❌']);
+        }
+
+        // 3. インストール可否 (deferredPrompt)
+        var promptStatus = window._deferredInstallPrompt
+          ? 'プロンプト受信済み ✅'
+          : (window.InstallHandler && window.InstallHandler.deferredPrompt
+              ? 'InstallHandler に保持 ✅'
+              : '未受信 / iOS または非対応 ⚠️');
+        rows.push(['インストールプロンプト', promptStatus]);
+
+        // 4. beforeinstallprompt 受信状態
+        rows.push(['beforeinstallprompt', window._deferredInstallPrompt ? '受信済み ✅' : '未受信（iOS/既インスト/非対応）']);
+
+        // 5. ディスプレイモード
+        var dm = 'browser';
+        if (window.matchMedia('(display-mode: standalone)').matches) dm = 'standalone';
+        else if (window.navigator.standalone) dm = 'standalone (iOS)';
+        rows.push(['ディスプレイモード', dm]);
+
+        // 6. OS 判定
+        var ua = navigator.userAgent;
+        var os = /iPad|iPhone|iPod/.test(ua) ? 'iOS' : /Android/.test(ua) ? 'Android' : 'PC/Other';
+        rows.push(['OS', os + ' — ' + ua.slice(0, 60) + '…']);
+
+        // 7. localStorage user_installed
+        rows.push(['user_installed フラグ', localStorage.getItem('user_installed') || '(未設定)']);
+
+        renderRows(rows);
+      }
+
+      function renderRows(rows) {
+        if (!diagBody) return;
+        diagBody.innerHTML = rows.map(function (r) {
+          return '<div style="display:flex;gap:8px;border-bottom:1px solid var(--border-color);padding:6px 0;">' +
+            '<strong style="min-width:160px;color:var(--text-secondary);font-size:0.8rem;">' + r[0] + '</strong>' +
+            '<span style="flex:1;word-break:break-all;font-size:0.8rem;">' + r[1] + '</span>' +
+            '</div>';
+        }).join('');
+      }
+
+      if (diagBtn) {
+        diagBtn.addEventListener('click', function () {
+          diagBody.innerHTML = '<p style="color:var(--text-muted);">診断中…</p>';
+          diagOverlay.classList.add('is-open');
+          runDiag();
+        });
+      }
+      if (closeDiagBtn) {
+        closeDiagBtn.addEventListener('click', function () {
+          diagOverlay.classList.remove('is-open');
+        });
+      }
+      if (diagOverlay) {
+        diagOverlay.addEventListener('click', function (e) {
+          if (e.target === diagOverlay) diagOverlay.classList.remove('is-open');
+        });
       }
     })();
   </script>

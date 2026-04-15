@@ -49,6 +49,16 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
+  <!-- beforeinstallprompt を最速でキャプチャ(DOMContentLoaded より前) -->
+  <script>
+    window._deferredInstallPrompt = null;
+    window.addEventListener('beforeinstallprompt', function(e) {
+      e.preventDefault();
+      window._deferredInstallPrompt = e;
+      console.log('[PWA] beforeinstallprompt captured early');
+    });
+  </script>
+
   <link rel="stylesheet" href="css/install.css?v=20260416-p6">
   <link rel="stylesheet" href="css/style.css?v=20260416-pwa">
   <link rel="stylesheet" href="css/components.css?v=20260416-pwa">

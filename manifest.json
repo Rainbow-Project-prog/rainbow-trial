@@ -2,6 +2,7 @@
   "name": "Rainbow Trial",
   "short_name": "Rainbow Trial",
   "description": "Rainbow System を7日間体験できるFXトレード疑似アプリ",
+  "id": "/",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
