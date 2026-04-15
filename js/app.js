@@ -222,6 +222,12 @@
       if (el) el.classList.remove('is-hidden');
     },
 
+    // InstallBanner.init() は bindGlobalEvents() 内で呼ばれており、
+    // バナー表示は InstallBanner が管理する。このスタブは後方互換のため残す。
+    maybeShowInstallBanner: function () {
+      // no-op: handled by InstallBanner.init() in bindGlobalEvents
+    },
+
     dismissNotifyBanner: function () {
       const el = document.getElementById('promo-notify');
       if (el) el.classList.add('is-hidden');

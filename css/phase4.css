@@ -72,7 +72,7 @@
   height: 10px;
   background: #9775FA;
   border-radius: 50%;
-  border: 2px solid var(--bg-card);
+  border: 2px solid var(--bg-secondary);
   animation: hikari-pulse 1.4s ease infinite;
 }
 
@@ -155,7 +155,7 @@
 
 .hikari-overlay__card {
   position: relative;
-  background: var(--bg-card);
+  background: var(--bg-secondary);
   border-radius: 20px;
   padding: 28px 24px 24px;
   max-width: 380px;

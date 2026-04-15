@@ -411,10 +411,10 @@
       return;
     }
 
-    var DATA = global.ACHIEVEMENTS_LIST || [];
+    var DATA = global.ACHIEVEMENTS || [];
     unlocked.forEach(function (id, i) {
       var def = DATA.find ? DATA.find(function (a) { return a.id === id; }) : null;
-      var label = def ? (def.icon + ' ' + def.name) : id;
+      var label = def ? (def.icon + ' ' + def.title) : id;
       var el = document.createElement('div');
       el.className = 'finale-ach-badge';
       el.textContent = label;
