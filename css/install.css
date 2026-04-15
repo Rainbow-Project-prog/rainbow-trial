@@ -343,6 +343,262 @@
 .message-action-btn:active { opacity: 0.8; }
 
 /* --------------------------------------------------------------------------
+ * 6. インストールガイドオーバーレイ(iOS/Android/PC 共通ベース)
+ * -------------------------------------------------------------------------- */
+.install-guide-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9100;
+  background: rgba(0,0,0,0.75);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.install-guide-overlay.is-open { opacity: 1; }
+
+.install-guide {
+  width: 100%;
+  max-width: 480px;
+  background: #1A1A2E;
+  border-radius: 20px 20px 0 0;
+  padding: 20px 20px 36px;
+  position: relative;
+  transform: translateY(24px);
+  transition: transform 0.25s ease;
+  max-height: 92vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.install-guide-overlay.is-open .install-guide {
+  transform: translateY(0);
+}
+
+.install-guide__close {
+  position: absolute;
+  top: 12px; right: 14px;
+  background: rgba(255,255,255,0.1);
+  border: none; color: #fff;
+  font-size: 1.2rem;
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  min-height: 44px; min-width: 44px;
+}
+.install-guide__title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 4px;
+  padding-right: 30px;
+}
+.install-guide__subtitle {
+  font-size: 0.82rem;
+  color: rgba(255,255,255,0.45);
+  margin: 0 0 16px;
+}
+.install-guide__steps {
+  list-style: none;
+  padding: 0; margin: 0 0 16px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.install-guide__steps li {
+  display: flex; align-items: flex-start; gap: 12px;
+  font-size: 0.9rem; color: rgba(255,255,255,0.85); line-height: 1.55;
+}
+.install-guide__done {
+  width: 100%;
+  padding: 13px;
+  border-radius: 12px;
+  border: none;
+  background: linear-gradient(135deg, #6BCB77, #4DABF7);
+  color: #000;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 16px;
+  transition: opacity 0.15s;
+}
+.install-guide__done:active { opacity: 0.8; }
+
+/* --------------------------------------------------------------------------
+ * 7. iOS アニメーションガイド専用
+ * -------------------------------------------------------------------------- */
+.ios-step { display: none; }
+.ios-step.is-active { display: flex; flex-direction: column; align-items: center; }
+
+.ios-step__illust {
+  width: 160px;
+  margin: 0 auto 12px;
+}
+.ios-mockup {
+  width: 100%;
+  height: auto;
+  display: block;
+  filter: drop-shadow(0 4px 16px rgba(0,0,0,0.5));
+}
+
+/* パルスアニメーション(共有ボタン) */
+.share-btn-pulse {
+  animation: share-pulse 1.4s ease-in-out infinite;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+@keyframes share-pulse {
+  0%, 100% { r: 14; opacity: 1; }
+  50%       { r: 17; opacity: 0.75; }
+}
+
+/* ハイライト点滅(メニュー項目) */
+.menu-highlight {
+  animation: menu-blink 1.2s ease-in-out infinite;
+}
+@keyframes menu-blink {
+  0%, 100% { opacity: 0.9; }
+  50%       { opacity: 0.5; }
+}
+
+/* 矢印バウンス */
+.tap-arrow {
+  animation: tap-bounce 0.9s ease-in-out infinite;
+}
+@keyframes tap-bounce {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(4px); }
+}
+
+.ios-step__num {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: rgba(255,255,255,0.4);
+  letter-spacing: 0.08em;
+  margin-bottom: 6px;
+}
+.ios-step__desc {
+  font-size: 0.92rem;
+  color: rgba(255,255,255,0.9);
+  text-align: center;
+  line-height: 1.55;
+  margin: 0;
+}
+
+/* ナビ */
+.ios-guide__nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16px;
+}
+.ios-guide__prev,
+.ios-guide__next {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.7);
+  font-size: 0.85rem;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  min-height: 44px;
+  transition: background 0.15s;
+}
+.ios-guide__prev:disabled,
+.ios-guide__next:disabled { opacity: 0.3; cursor: default; }
+.ios-guide__prev:not(:disabled):active,
+.ios-guide__next:not(:disabled):active { background: rgba(255,255,255,0.18); }
+.ios-guide__dots {
+  display: flex; gap: 8px; align-items: center;
+}
+.ios-guide__dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.2);
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+.ios-guide__dot.is-active {
+  background: linear-gradient(135deg, #9775FA, #4DABF7);
+  transform: scale(1.25);
+}
+
+/* --------------------------------------------------------------------------
+ * 8. 成功モーダル
+ * -------------------------------------------------------------------------- */
+.install-success-card {
+  width: 100%;
+  max-width: 480px;
+  background: #1A1A2E;
+  border-radius: 20px 20px 0 0;
+  padding: 32px 24px 40px;
+  text-align: center;
+  transform: translateY(24px);
+  transition: transform 0.25s ease;
+}
+.install-guide-overlay.is-open .install-success-card {
+  transform: translateY(0);
+}
+.install-success-card__icon {
+  font-size: 3rem;
+  margin-bottom: 12px;
+  animation: success-pop 0.5s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+@keyframes success-pop {
+  from { transform: scale(0); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+.install-success-card__title {
+  font-size: 1.4rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #FFD93D, #6BCB77, #4DABF7);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0 0 10px;
+}
+.install-success-card__body {
+  font-size: 0.9rem;
+  color: rgba(255,255,255,0.75);
+  margin: 0 0 6px;
+}
+.install-success-card__sub {
+  font-size: 0.9rem;
+  color: rgba(255,255,255,0.55);
+  margin: 0 0 14px;
+}
+.install-success-card__list {
+  list-style: none;
+  padding: 0; margin: 0 0 20px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.install-success-card__list li {
+  font-size: 0.88rem;
+  color: rgba(255,255,255,0.7);
+}
+.install-success-card__btn { margin: 0; }
+
+/* --------------------------------------------------------------------------
+ * 9. 紙吹雪
+ * -------------------------------------------------------------------------- */
+.confetti-container {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9200;
+  overflow: hidden;
+}
+.confetti-piece {
+  position: absolute;
+  top: -12px;
+  animation: confetti-fall linear forwards;
+}
+@keyframes confetti-fall {
+  0%   { transform: translateY(0) rotate(0deg);   opacity: 1; }
+  80%  { opacity: 1; }
+  100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+}
+
+/* --------------------------------------------------------------------------
  * @media: インストール済みなら非表示
  * -------------------------------------------------------------------------- */
 @media (display-mode: standalone) {

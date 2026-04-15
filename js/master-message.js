@@ -284,7 +284,7 @@
     var installBtn = overlay.querySelector('#hikari-modal-install-btn');
     if (installBtn) {
       installBtn.addEventListener('click', function () {
-        if (global.InstallModal) global.InstallModal.show();
+        if (global.InstallHandler) global.InstallHandler.install();
       });
     }
   }

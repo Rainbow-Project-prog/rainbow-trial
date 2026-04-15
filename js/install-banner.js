@@ -1,6 +1,7 @@
 /* ==========================================================================
  * Rainbow Trial — js/install-banner.js
  * 常時表示インストールバナー(タブバー上部固定)
+ * InstallHandler.install() に委譲
  * 公開グローバル: window.InstallBanner
  * ========================================================================== */
 
@@ -12,12 +13,11 @@
 
   var InstallBanner = {
     shouldShow: function () {
-      // インストール済み(standalone起動 or フラグあり)なら表示しない
-      if (global.InstallDetector && global.InstallDetector.isInstalled()) return false;
-      // standalone メディアクエリ直接チェック
+      // スタンドアロン起動中は表示しない
       if (global.matchMedia && global.matchMedia('(display-mode: standalone)').matches) return false;
       if (global.navigator && global.navigator.standalone === true) return false;
-      // 24時間以内に × で閉じた場合は表示しない
+      if (global.InstallDetector && global.InstallDetector.isInstalled()) return false;
+      // 24時間以内に × で閉じた場合は非表示
       var dismissedAt = localStorage.getItem(DISMISS_KEY);
       if (dismissedAt) {
         var elapsed = Date.now() - parseInt(dismissedAt, 10);
@@ -28,22 +28,22 @@
 
     init: function () {
       var self = this;
-      if (!self.shouldShow()) return;
+      if (!this.shouldShow()) return;
 
       var banner = document.getElementById('install-banner');
       if (!banner) return;
       banner.style.display = 'flex';
 
-      /* 「追加方法」ボタン */
+      // 「追加方法」ボタン
       var actionBtn = banner.querySelector('.install-banner-action');
       if (actionBtn) {
         actionBtn.addEventListener('click', function (e) {
           e.stopPropagation();
-          if (global.InstallModal) global.InstallModal.show();
+          if (global.InstallHandler) global.InstallHandler.install();
         });
       }
 
-      /* × ボタン */
+      // × ボタン
       var closeBtn = document.getElementById('install-banner-close');
       if (closeBtn) {
         closeBtn.addEventListener('click', function (e) {
@@ -52,17 +52,13 @@
         });
       }
 
-      /* バナー本体タップ */
+      // バナー本体タップ
       banner.addEventListener('click', function () {
-        if (global.InstallModal) global.InstallModal.show();
+        if (global.InstallHandler) global.InstallHandler.install();
       });
 
-      /* インストール完了で永久非表示 */
-      if (global.InstallDetector) {
-        global.InstallDetector.onInstallSuccess(function () {
-          self.hide();
-        });
-      }
+      // インストール完了で永久非表示
+      global.addEventListener('appinstalled', function () { self.hide(); });
     },
 
     hide: function () {

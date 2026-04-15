@@ -213,6 +213,7 @@
   <!-- 依存: localStorage のみ触るので、storage.js だけで足りる -->
   <script src="js/storage.js"></script>
   <script src="js/install-detector.js"></script>
+  <script src="js/install-handler.js"></script>
   <script src="js/install-modal.js"></script>
 
   <script>
@@ -241,16 +242,13 @@
       if (window.InstallDetector && window.InstallDetector.isInstalled()) {
         if (installSection) installSection.style.display = 'none';
       }
-      // beforeinstallprompt を捕捉
-      window.addEventListener('beforeinstallprompt', function (e) {
-        e.preventDefault();
-        if (window.InstallModal) window.InstallModal.setDeferredPrompt(e);
-      });
+      // InstallHandler 初期化(beforeinstallprompt キャプチャ)
+      if (window.InstallHandler) window.InstallHandler.init();
       // 「ホーム画面に追加する」ボタン
       const installBtn = document.getElementById('welcome-install-btn');
       if (installBtn) {
         installBtn.addEventListener('click', function () {
-          if (window.InstallModal) window.InstallModal.show();
+          if (window.InstallHandler) window.InstallHandler.install();
         });
       }
       // 「後で設定する」ボタン

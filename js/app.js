@@ -202,10 +202,7 @@
     },
 
     _captureInstallPrompt: function () {
-      global.addEventListener('beforeinstallprompt', function (e) {
-        e.preventDefault();
-        if (global.InstallModal) global.InstallModal.setDeferredPrompt(e);
-      });
+      if (global.InstallHandler) global.InstallHandler.init();
     },
 
     /* ======================================================================
@@ -502,7 +499,7 @@
         instBtn.addEventListener('click', function () {
           document.getElementById('overlay-settings').classList.remove('is-open');
           setTimeout(function () {
-            if (global.InstallModal) global.InstallModal.show();
+            if (global.InstallHandler) global.InstallHandler.install();
           }, 200);
         });
       }
