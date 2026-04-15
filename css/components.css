@@ -806,6 +806,10 @@
   gap: var(--sp-2);
   margin-top: var(--sp-3);
 }
+@media (max-width: 480px) {
+  .live-actions { grid-template-columns: 1fr; }
+  .live-actions .btn--lg { padding: 16px 20px; font-size: 1rem; }
+}
 
 /* ==========================================================================
    11. 空ステート

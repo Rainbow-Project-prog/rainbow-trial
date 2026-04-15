@@ -367,13 +367,17 @@
   /* --------------------------------------------------------------------------
    * 5. シグナルのエンリッチ(pips / 損益 / RR比 / チャート)
    * -------------------------------------------------------------------------- */
+  // 全シグナル共通の目標リスクリワード比(1 : TARGET_RR)
+  const TARGET_RR = 1.6;
+
   function enrichSignal(meta) {
     const conf = PAIR_CONFIG[meta.pair];
     const dir = meta.direction === 'long' ? 1 : -1;
 
-    // pips 計算(方向考慮で正の値になるよう)
-    const tpPips = Math.abs(Math.round(((meta.tp - meta.entry) * dir) / conf.pipSize));
+    // SL はシナリオ定義どおり尊重、TP は SL 距離 × TARGET_RR で再計算
     const slPips = Math.abs(Math.round(((meta.entry - meta.sl) * dir) / conf.pipSize));
+    const tpPips = Math.round(slPips * TARGET_RR);
+    const tp = round(meta.entry + dir * tpPips * conf.pipSize, conf.decimals);
 
     const tpProfit = tpPips * conf.pipValue;
     const slLoss = -slPips * conf.pipValue;
@@ -382,6 +386,7 @@
     const chart = generateChart(meta);
 
     return Object.assign({}, meta, {
+      tp: tp,
       pipSize: conf.pipSize,
       pipValue: conf.pipValue,
       lotSize: conf.lotSize,
