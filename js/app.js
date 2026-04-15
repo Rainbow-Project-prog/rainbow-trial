@@ -1695,8 +1695,13 @@
    * Boot
    * ======================================================================== */
   function boot() {
-    registerServiceWorker();
     App.init();
+    // SW は load イベント後に登録(Chrome 推奨: ページ描画を妨げない)
+    if (document.readyState === 'complete') {
+      registerServiceWorker();
+    } else {
+      window.addEventListener('load', registerServiceWorker);
+    }
   }
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', boot);
