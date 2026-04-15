@@ -29,7 +29,7 @@
   'use strict';
 
   const KEY = 'rainbow-trial-v1';
-  const VERSION = 3;          // Phase 3 で 3 に更新(既存データは migrate() で保持)
+  const VERSION = 4;          // Phase 4 で 4 に更新(既存データは migrate() で保持)
   const INITIAL_CAPITAL = 300000;
 
   /* --------------------------------------------------------------------------
@@ -177,6 +177,20 @@
     merged.missions = Object.assign({}, data.missions || {});
 
     // 既存フィールド
+    // Phase 4: settings.masterMessageShown / _lastKnownDay / _finalScreenAutoShown を保持
+    if (data.settings && data.settings.masterMessageShown) {
+      merged.settings.masterMessageShown = Object.assign(
+        {}, merged.settings.masterMessageShown || {},
+        data.settings.masterMessageShown
+      );
+    }
+    if (data.settings && data.settings._lastKnownDay) {
+      merged.settings._lastKnownDay = data.settings._lastKnownDay;
+    }
+    if (data.settings && data.settings._finalScreenAutoShown) {
+      merged.settings._finalScreenAutoShown = data.settings._finalScreenAutoShown;
+    }
+
     merged.trades         = Array.isArray(data.trades)  ? data.trades.slice()  : [];
     merged.signals        = Array.isArray(data.signals) ? data.signals.slice() : [];
     merged.currentPosition = data.currentPosition || null;

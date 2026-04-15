@@ -309,9 +309,11 @@
       body.innerHTML =
         '<div class="settings-section">' +
           '<div class="settings-section__title">進行</div>' +
-          act('next-signal', '次のシグナルを今すぐ受信') +
-          act('day-plus',    'Day を進める (+1)') +
-          act('day-minus',   'Day を戻す (-1)') +
+          act('next-signal',    '次のシグナルを今すぐ受信') +
+          act('day-plus',       'Day を進める (+1)') +
+          act('day-minus',      'Day を戻す (-1)') +
+          act('show-master-msg','現在の Day のマスターメッセージを表示') +
+          act('show-final',     'Day 7 最終画面を表示') +
         '</div>' +
         '<div class="settings-section">' +
           '<div class="settings-section__title">通知 / PWA</div>' +
@@ -400,6 +402,20 @@
           if (!confirm('全データを削除します。よろしいですか?')) return;
           global.TrialStore.resetAll();
           location.replace('welcome.html');
+          break;
+        }
+        case 'show-master-msg': {
+          var snap2 = global.GameState.snapshot();
+          var d2 = snap2.displayDay;
+          if (global.MasterMessage && global.getMessageForDay) {
+            var m = global.getMessageForDay(d2);
+            if (m) { global.MasterMessage.showModal(m); }
+            else { alert('現在の Day (' + d2 + ') にはマスターメッセージがありません'); }
+          }
+          break;
+        }
+        case 'show-final': {
+          if (global.FinalScreen) global.FinalScreen.show();
           break;
         }
       }
@@ -496,7 +512,7 @@
 
         '<div class="settings-section">' +
           '<div class="settings-section__title">ℹ️ アプリ情報</div>' +
-          '<div class="settings-info">バージョン: <strong>3.0.0</strong></div>' +
+          '<div class="settings-info">バージョン: <strong>4.0.0</strong></div>' +
         '</div>';
 
       const self = this;

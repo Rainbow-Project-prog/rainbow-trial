@@ -49,6 +49,7 @@
   <link rel="stylesheet" href="css/components.css?v=20260416-pwa">
   <link rel="stylesheet" href="css/chart.css?v=20260416-pwa">
   <link rel="stylesheet" href="css/effects.css?v=20260416-p3">
+  <link rel="stylesheet" href="css/phase4.css?v=20260416-p4">
 
   <style>
     /* 画面切替(index 固有) */
@@ -219,12 +220,16 @@
        アプリ本体: 依存関係順に読み込み
        ========================================================================== -->
   <!-- データ層 -->
-  <script src="js/storage.js?v=20260416-p3"></script>
+  <script src="js/storage.js?v=20260416-p4"></script>
   <script src="data/scenarios.js?v=20260416-pwa"></script>
 
   <!-- Phase 3: データ定義 -->
   <script src="data/achievements-list.js?v=20260416-p3"></script>
   <script src="data/missions-list.js?v=20260416-p3"></script>
+
+  <!-- Phase 4: データ定義 -->
+  <script src="data/master-messages.js?v=20260416-p4"></script>
+  <script src="data/members-feed.js?v=20260416-p4"></script>
 
   <!-- 状態・通知 -->
   <script src="js/game-state.js?v=20260416-pwa"></script>
@@ -245,9 +250,15 @@
   <script src="js/judgment-score.js?v=20260416-p3"></script>
   <script src="js/stats.js?v=20260416-p3"></script>
 
+  <!-- Phase 4: コアシステム -->
+  <script src="js/master-message.js?v=20260416-p4"></script>
+  <script src="js/members-feed.js?v=20260416-p4"></script>
+  <script src="js/final-screen.js?v=20260416-p4"></script>
+
   <!-- 統合層 -->
-  <script src="js/app.js?v=20260416-p3"></script>
+  <script src="js/app.js?v=20260416-p4"></script>
   <script src="js/phase3-hooks.js?v=20260416-p3"></script>
+  <script src="js/phase4-hooks.js?v=20260416-p4"></script>
 
 </body>
 </html>
