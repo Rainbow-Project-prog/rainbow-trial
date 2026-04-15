@@ -1271,7 +1271,7 @@
 .ach-card__prog-num { color: var(--text-muted); }
 
 /* ---- 統計ページ ---- */
-.stats-page { padding: var(--sp-2) 0 var(--sp-8); }
+.stats-page { padding: var(--sp-2) 0 var(--sp-8); overflow-x: hidden; }
 .stats-section { margin-bottom: 20px; }
 .stats-section__title {
   font-size: 0.88rem; font-weight: 700; color: var(--text-muted);
@@ -1295,8 +1295,15 @@
 .stats-rarity-list { display: flex; flex-direction: column; gap: 10px; }
 .stats-rarity-row {
   display: grid;
-  grid-template-columns: 80px 40px 90px 36px 70px 1fr;
-  align-items: center; gap: 6px; font-size: 0.8rem;
+  grid-template-columns: minmax(60px,80px) 38px minmax(70px,90px) 34px minmax(54px,70px) 1fr;
+  align-items: center; gap: 4px; font-size: 0.78rem;
+}
+@media (max-width: 360px) {
+  .stats-rarity-row {
+    grid-template-columns: 58px 34px 62px 30px 48px 1fr;
+    font-size: 0.72rem;
+    gap: 3px;
+  }
 }
 .stats-rarity-row__name  { font-weight: 700; }
 .stats-rarity-row__rate  { font-weight: 700; text-align: right; }
