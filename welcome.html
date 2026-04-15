@@ -29,6 +29,7 @@
 
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/install.css">
 
   <style>
     /* welcome 固有の微調整 */
@@ -134,6 +135,33 @@
           <div class="field__error" id="err-nickname"></div>
         </div>
 
+        <!-- PWA インストール推奨 -->
+        <div class="install-section" id="welcome-install-section">
+          <div class="install-section-header">
+            <h3>📱 アプリとして使いますか?</h3>
+          </div>
+          <div class="install-benefits">
+            <div class="benefit-item">
+              <span class="benefit-icon">✓</span>
+              <span>通知でシグナルを見逃さない</span>
+            </div>
+            <div class="benefit-item">
+              <span class="benefit-icon">✓</span>
+              <span>1タップで起動できる</span>
+            </div>
+            <div class="benefit-item">
+              <span class="benefit-icon">✓</span>
+              <span>オフラインでも使える</span>
+            </div>
+          </div>
+          <button class="install-button-primary" id="welcome-install-btn" type="button">
+            📲 ホーム画面に追加する
+          </button>
+          <button class="install-skip-btn" id="welcome-skip-install" type="button">
+            後で設定する
+          </button>
+        </div>
+
         <!-- 規約同意 -->
         <label class="check" id="field-agree">
           <input type="checkbox" id="agree" name="agree">
@@ -184,6 +212,8 @@
 
   <!-- 依存: localStorage のみ触るので、storage.js だけで足りる -->
   <script src="js/storage.js"></script>
+  <script src="js/install-detector.js"></script>
+  <script src="js/install-modal.js"></script>
 
   <script>
     (function () {
@@ -204,6 +234,32 @@
       const startBtn   = document.getElementById('start-btn');
 
       const testMode = false;
+
+      // --- インストールセクション制御 ---------------------------------------
+      const installSection = document.getElementById('welcome-install-section');
+      // インストール済みなら非表示
+      if (window.InstallDetector && window.InstallDetector.isInstalled()) {
+        if (installSection) installSection.style.display = 'none';
+      }
+      // beforeinstallprompt を捕捉
+      window.addEventListener('beforeinstallprompt', function (e) {
+        e.preventDefault();
+        if (window.InstallModal) window.InstallModal.setDeferredPrompt(e);
+      });
+      // 「ホーム画面に追加する」ボタン
+      const installBtn = document.getElementById('welcome-install-btn');
+      if (installBtn) {
+        installBtn.addEventListener('click', function () {
+          if (window.InstallModal) window.InstallModal.show();
+        });
+      }
+      // 「後で設定する」ボタン
+      const skipInstallBtn = document.getElementById('welcome-skip-install');
+      if (skipInstallBtn) {
+        skipInstallBtn.addEventListener('click', function () {
+          if (installSection) installSection.style.display = 'none';
+        });
+      }
 
       // --- 規約モーダル -----------------------------------------------------
       const termsOverlay = document.getElementById('terms-overlay');

@@ -142,15 +142,8 @@
         });
       }
 
-      // ホーム画面追加バナー
-      const installBar = document.getElementById('promo-install');
-      if (installBar) {
-        installBar.addEventListener('click', function (e) {
-          const act = e.target && e.target.getAttribute('data-act');
-          if (act === 'install') self.handleInstallPrompt();
-          if (act === 'later')   self.dismissInstallBanner();
-        });
-      }
+      // インストールバナー初期化
+      if (global.InstallBanner) global.InstallBanner.init();
 
       // Service Worker からの通知クリック
       if (global.Notifications && global.Notifications.bindServiceWorkerMessages) {
@@ -209,15 +202,9 @@
     },
 
     _captureInstallPrompt: function () {
-      const self = this;
-      this._installPromptEvent = null;
       global.addEventListener('beforeinstallprompt', function (e) {
         e.preventDefault();
-        self._installPromptEvent = e;
-        self.maybeShowInstallBanner();
-      });
-      global.addEventListener('appinstalled', function () {
-        self.dismissInstallBanner();
+        if (global.InstallModal) global.InstallModal.setDeferredPrompt(e);
       });
     },
 
@@ -254,38 +241,6 @@
       this.dismissNotifyBanner();
     },
 
-    maybeShowInstallBanner: function () {
-      const isStandalone = (global.matchMedia && global.matchMedia('(display-mode: standalone)').matches) ||
-                           global.navigator.standalone === true;
-      if (isStandalone) return;
-      const st = global.TrialStore.getState();
-      const lc = (st.settings && st.settings.launchCount) || 0;
-      const dismissed = st.settings && st.settings.installBannerDismissedAt;
-      if (dismissed && Date.now() - new Date(dismissed).getTime() < 1 * 86400 * 1000) return;
-      const elapsed = global.TrialStore.getElapsedMinutes();
-      if (elapsed < 3 * 24 * 60 && lc < 5) return;
-      const el = document.getElementById('promo-install');
-      if (el) el.classList.remove('is-hidden');
-    },
-
-    dismissInstallBanner: function () {
-      const el = document.getElementById('promo-install');
-      if (el) el.classList.add('is-hidden');
-      const st = global.TrialStore.getState();
-      const s  = Object.assign({}, st.settings || {}, { installBannerDismissedAt: new Date().toISOString() });
-      global.TrialStore.setState({ settings: s });
-    },
-
-    handleInstallPrompt: async function () {
-      if (this._installPromptEvent) {
-        this._installPromptEvent.prompt();
-        try { await this._installPromptEvent.userChoice; } catch (e) {}
-        this._installPromptEvent = null;
-        this.dismissInstallBanner();
-      } else {
-        alert('ホーム画面に追加する手順:\n\n1. 画面下部の「共有」ボタン(□↑)をタップ\n2. 「ホーム画面に追加」を選択\n3. 「追加」をタップ');
-      }
-    },
 
     /* ======================================================================
      * デバッグメニュー (Konami Code または ロゴ 5 連タップで開く)

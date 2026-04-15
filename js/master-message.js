@@ -101,7 +101,20 @@
    * -------------------------------------------------------------------------- */
   function checkAndShowDay(day) {
     if (typeof day !== 'number') return;
-    var msg = global.getHikariMessageForDay && global.getHikariMessageForDay(day);
+
+    // Day 2 はインストール状態でメッセージIDを切り替え
+    var msgId = null;
+    if (day === 2 && global.InstallDetector && global.InstallDetector.isInstalled()) {
+      msgId = 'day2_morning_installed';
+    }
+
+    var msg;
+    if (msgId && global.getHikariMessageById) {
+      msg = global.getHikariMessageById(msgId);
+    }
+    if (!msg) {
+      msg = global.getHikariMessageForDay && global.getHikariMessageForDay(day);
+    }
     if (!msg) return;
     if (_isShown(msg.id)) return;
 
@@ -222,6 +235,16 @@
         '</div>'
       : '';
 
+    // インストールボタン(hasInstallButton かつ未インストール時のみ)
+    var installBtnHTML = '';
+    if (msg.hasInstallButton &&
+        !(global.InstallDetector && global.InstallDetector.isInstalled())) {
+      installBtnHTML =
+        '<button class="message-action-btn" id="hikari-modal-install-btn" type="button">' +
+          '📲 ホーム画面への追加方法' +
+        '</button>';
+    }
+
     overlay.innerHTML =
       '<div class="hikari-overlay__card">' +
         '<div class="hikari-modal__header">' +
@@ -236,6 +259,7 @@
         '<h2 id="hikari-modal-title" class="hikari-modal__subject">' + _esc(msg.subject || '') + '</h2>' +
         '<div class="hikari-modal__body">' + bodyHTML + '</div>' +
         lineHintHTML +
+        installBtnHTML +
         '<div class="hikari-modal__from">' + _esc(msg.from || '') + '</div>' +
         '<button class="btn btn--primary btn--block hikari-modal__close" type="button">読んだ！</button>' +
       '</div>';
@@ -255,6 +279,14 @@
     overlay.addEventListener('click', function (e) {
       if (e.target === overlay) _closeModal(overlay);
     });
+
+    // インストールボタン
+    var installBtn = overlay.querySelector('#hikari-modal-install-btn');
+    if (installBtn) {
+      installBtn.addEventListener('click', function () {
+        if (global.InstallModal) global.InstallModal.show();
+      });
+    }
   }
 
   function _closeModal(overlay) {

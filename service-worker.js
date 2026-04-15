@@ -14,7 +14,7 @@
  *   - CACHE_NAME を変更すると古いキャッシュを activate で一掃
  * ========================================================================== */
 
-const CACHE_VERSION = 'v5.0.1-20260416p6';
+const CACHE_VERSION = 'v5.1.0-20260416p7';
 const CACHE_NAME    = 'rainbow-trial-' + CACHE_VERSION;
 
 const PRECACHE_URLS = [
@@ -32,6 +32,10 @@ const PRECACHE_URLS = [
   'js/game-state.js',
   'js/notifications.js',
   'js/signals.js',
+  'css/install.css',
+  'js/install-detector.js',
+  'js/install-modal.js',
+  'js/install-banner.js',
   'js/judgment.js',
   'js/chart.js',
   'js/trade.js',

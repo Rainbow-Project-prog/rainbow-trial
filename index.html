@@ -49,6 +49,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
+  <link rel="stylesheet" href="css/install.css?v=20260416-p6">
   <link rel="stylesheet" href="css/style.css?v=20260416-pwa">
   <link rel="stylesheet" href="css/components.css?v=20260416-pwa">
   <link rel="stylesheet" href="css/chart.css?v=20260416-pwa">
@@ -157,6 +158,16 @@
   <!-- ==========================================================================
        タブバー(下部固定、メイン画面のみ表示)
        ========================================================================== -->
+  <!-- インストールバナー(タブバー上部固定) -->
+  <div id="install-banner" role="banner" aria-label="ホーム画面に追加">
+    <div class="install-banner-content">
+      <span class="install-banner-icon">📲</span>
+      <span class="install-banner-text">アプリとしてホーム画面に追加</span>
+      <button class="install-banner-action" type="button">追加方法</button>
+    </div>
+    <button class="install-banner-close" id="install-banner-close" type="button" aria-label="閉じる">×</button>
+  </div>
+
   <nav class="tabbar" id="tabbar" aria-label="メインナビゲーション">
     <div class="tabbar__inner">
       <button class="tabbar__btn is-active" data-tab="home" type="button">
@@ -226,6 +237,9 @@
        ========================================================================== -->
   <!-- データ層 -->
   <script src="js/storage.js?v=20260416-p4"></script>
+  <script src="js/install-detector.js?v=20260416-p6"></script>
+  <script src="js/install-modal.js?v=20260416-p6"></script>
+  <script src="js/install-banner.js?v=20260416-p6"></script>
   <script src="data/scenarios.js?v=20260416-pwa"></script>
 
   <!-- Phase 3: データ定義 -->
