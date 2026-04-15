@@ -145,6 +145,20 @@
   }
 
   /**
+   * シグナル ID から決定論的に価格推移パターンを選ぶ。
+   *   'smooth'  : なだらかに target へ(従来挙動)
+   *   'choppy'  : ノイズ振幅と周波数を増やし、揉み合い強め
+   *   'retrace' : 序盤で target とは反対方向へ戻してから本命方向へ(騙しあり)
+   * 最終的に target に収束する点は共通。
+   */
+  function getPricePattern(signal) {
+    const m = signal.id % 3;
+    if (m === 0) return 'smooth';
+    if (m === 1) return 'choppy';
+    return 'retrace';
+  }
+
+  /**
    * entry→target を smoothstep 補間、両端にいくほどノイズ減衰。
    * 決定論的: (signal, pos, progress) が同じなら常に同じ価格を返す。
    * これにより過去の bucket を再サンプリングしても OHLC が安定する。
@@ -153,19 +167,37 @@
     const entry  = signal.entry;
     const target = pos.targetPrice;
     const t = progress;
-    const eased = t * t * (3 - 2 * t);     // smoothstep
+    const pattern = getPricePattern(signal);
+
+    // ベース進行: smoothstep をパターンで歪める。retrace は序盤反対方向へ
+    let eased = t * t * (3 - 2 * t);
+    if (pattern === 'retrace') {
+      // t^0.5 の sin バンプで t≈0.3 付近に底を作る(両端は 0 に戻る)
+      const bump = Math.sin(Math.PI * Math.pow(t, 0.5));
+      eased = eased - 0.45 * bump;
+    }
+
     let price = entry + (target - entry) * eased;
 
     // progress 中盤でノイズ最大、両端に向かって収束(ベル曲線)
-    const bell = 1 - Math.abs(progress - 0.5) * 2;
-    const noiseScale = Math.abs(target - entry) * 0.22 * bell;
+    // choppy はベルを太らせて中盤の揉み合いを長引かせ、振幅も増やす
+    const bellRaw = 1 - Math.abs(progress - 0.5) * 2;
+    const bell = pattern === 'choppy' ? Math.pow(bellRaw, 0.35) : bellRaw;
+    const noiseMul = pattern === 'choppy'  ? 0.42
+                   : pattern === 'retrace' ? 0.28
+                   :                         0.22;
+    const noiseScale = Math.abs(target - entry) * noiseMul * bell;
     if (noiseScale > 0) {
       // progress ベース(時刻非依存)のノイズ刻み → 過去 bucket も安定
       const totalMs = Math.max(1, pos.endAt - pos.startAt);
       const tick = Math.floor(progress * totalMs / 180);
-      const n = Math.sin(tick * 1.7 + signal.id * 0.31) * 0.6
-              + Math.sin(tick * 3.1 + signal.id * 0.57) * 0.25
-              + Math.sin(tick * 5.3 + signal.id * 0.83) * 0.15;
+      let n = Math.sin(tick * 1.7 + signal.id * 0.31) * 0.6
+            + Math.sin(tick * 3.1 + signal.id * 0.57) * 0.25
+            + Math.sin(tick * 5.3 + signal.id * 0.83) * 0.15;
+      if (pattern === 'choppy') {
+        // 高周波成分を追加してヒゲの多いチャートに
+        n += Math.sin(tick * 7.9 + signal.id * 1.13) * 0.18;
+      }
       price += n * noiseScale;
     }
     const d = signal.decimals != null ? signal.decimals
