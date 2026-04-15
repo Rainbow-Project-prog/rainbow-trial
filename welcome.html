@@ -27,76 +27,19 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
-  <!-- beforeinstallprompt を最速でキャプチャ -->
+  <!-- beforeinstallprompt: PWA 診断ツール用に早期キャプチャ -->
   <script>
     window._deferredInstallPrompt = null;
     window.addEventListener('beforeinstallprompt', function(e) {
       e.preventDefault();
       window._deferredInstallPrompt = e;
-      console.log('[PWA] beforeinstallprompt captured early (welcome)');
     });
   </script>
 
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/components.css">
-  <link rel="stylesheet" href="css/install.css">
 
   <style>
-    /* welcome 固有の微調整 */
-    .welcome__mode {
-      width: 100%;
-      background: var(--bg-secondary);
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-md);
-      padding: var(--sp-3) var(--sp-4);
-      display: flex;
-      align-items: center;
-      gap: var(--sp-3);
-      text-align: left;
-      cursor: pointer;
-      user-select: none;
-      transition: border-color var(--dur-1) var(--ease), background var(--dur-1) var(--ease);
-    }
-    .welcome__mode:hover { border-color: var(--border-light); }
-    .welcome__mode.is-active {
-      border-color: var(--color-info);
-      background: linear-gradient(135deg, rgba(79,195,247,0.08), transparent);
-    }
-    .welcome__mode-text { flex: 1; }
-    .welcome__mode-title {
-      font-weight: 700;
-      color: var(--text-primary);
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 0.95rem;
-    }
-    .welcome__mode-desc {
-      font-size: 0.78rem;
-      color: var(--text-secondary);
-      line-height: 1.55;
-      margin-top: 2px;
-    }
-    .toggle {
-      position: relative;
-      width: 44px; height: 24px;
-      flex: 0 0 44px;
-      background: var(--bg-tertiary);
-      border-radius: 999px;
-      transition: background var(--dur-1) var(--ease);
-    }
-    .toggle::after {
-      content: '';
-      position: absolute;
-      top: 3px; left: 3px;
-      width: 18px; height: 18px;
-      border-radius: 50%;
-      background: var(--text-muted);
-      transition: transform var(--dur-2) var(--ease), background var(--dur-1) var(--ease);
-    }
-    .welcome__mode.is-active .toggle { background: rgba(79,195,247,0.35); }
-    .welcome__mode.is-active .toggle::after { transform: translateX(20px); background: var(--color-info); }
-
     /* Loading */
     .welcome__loading {
       display: none;
@@ -145,35 +88,6 @@
           <div class="field__error" id="err-nickname"></div>
         </div>
 
-        <!-- PWA インストール推奨 -->
-        <div class="install-section" id="welcome-install-section" data-install-ui>
-          <div class="install-section-header">
-            <h3>📱 アプリとして使いますか?</h3>
-          </div>
-          <div class="install-benefits">
-            <div class="benefit-item">
-              <span class="benefit-icon">✓</span>
-              <span>通知でシグナルを見逃さない</span>
-            </div>
-            <div class="benefit-item">
-              <span class="benefit-icon">✓</span>
-              <span>1タップで起動できる</span>
-            </div>
-            <div class="benefit-item">
-              <span class="benefit-icon">✓</span>
-              <span>オフラインでも使える</span>
-            </div>
-          </div>
-          <button class="install-button-primary" id="welcome-install-btn" data-install-btn type="button"
-                  onclick="if(window.InstallHandler) InstallHandler.install();">
-            📲 ホーム画面に追加する
-          </button>
-          <button class="install-skip-btn" type="button"
-                  onclick="document.getElementById('welcome-install-section').style.display='none'">
-            後で設定する
-          </button>
-        </div>
-
         <!-- 規約同意 -->
         <label class="check" id="field-agree">
           <input type="checkbox" id="agree" name="agree">
@@ -214,7 +128,7 @@
     </div>
   </div>
 
-  <!-- 利用規約モーダル(簡易) -->
+  <!-- 利用規約モーダル -->
   <div class="overlay" id="terms-overlay" role="dialog" aria-modal="true" aria-labelledby="terms-title">
     <div class="overlay__card" style="max-width: 520px;">
       <h2 id="terms-title" style="font-size: 1.2rem; margin-bottom: var(--sp-3);">利用規約(かんたん版)</h2>
@@ -235,12 +149,7 @@
     </div>
   </div>
 
-  <!-- 依存スクリプト: 読み込み順に注意 -->
-  <script src="js/device-detect.js"></script>
   <script src="js/storage.js"></script>
-  <script src="js/install-detector.js"></script>
-  <script src="js/install-handler.js"></script>
-  <script src="js/install-modal.js"></script>
 
   <script>
     (function () {
@@ -261,10 +170,6 @@
       const startBtn   = document.getElementById('start-btn');
 
       const testMode = false;
-
-      // --- インストールセクション制御 ---------------------------------------
-      // InstallHandler.init() がインストール済み判定 + UI 非表示を行う
-      if (window.InstallHandler) window.InstallHandler.init();
 
       // --- 規約モーダル -----------------------------------------------------
       const termsOverlay = document.getElementById('terms-overlay');
@@ -341,22 +246,21 @@
         setTimeout(function () { nicknameEl.focus(); }, 200);
       }
 
-      // --- PWA 診断 -----------------------------------------------------------
-      var diagOverlay  = document.getElementById('pwa-diag-overlay');
-      var diagBody     = document.getElementById('pwa-diag-body');
-      var closeDiagBtn = document.getElementById('close-pwa-diag');
-      var diagBtn      = document.getElementById('pwa-diag-btn');
+      // --- PWA 診断 ---------------------------------------------------------
+      const diagOverlay  = document.getElementById('pwa-diag-overlay');
+      const diagBody     = document.getElementById('pwa-diag-body');
+      const closeDiagBtn = document.getElementById('close-pwa-diag');
+      const diagBtn      = document.getElementById('pwa-diag-btn');
 
       function runDiag() {
-        var rows = [];
+        const rows = [];
 
-        // 1. Service Worker 登録状態
         if ('serviceWorker' in navigator) {
           navigator.serviceWorker.getRegistration('./').then(function (reg) {
-            var swStatus = reg
+            const s = reg
               ? ('登録済み ✅ (scope: ' + reg.scope + ', state: ' + (reg.active ? reg.active.state : 'waiting') + ')')
               : '未登録 ❌';
-            rows.push(['Service Worker', swStatus]);
+            rows.push(['Service Worker', s]);
             renderRows(rows);
           }).catch(function (e) {
             rows.push(['Service Worker', '取得エラー: ' + e.message]);
@@ -366,43 +270,32 @@
           rows.push(['Service Worker', 'サポートされていない ❌']);
         }
 
-        // 2. Manifest 読み込み状態
-        var manifestLink = document.querySelector('link[rel="manifest"]');
+        const manifestLink = document.querySelector('link[rel="manifest"]');
         if (manifestLink) {
           fetch(manifestLink.href).then(function (r) {
-            rows.push(['Manifest', r.ok ? '読み込み成功 ✅ (' + manifestLink.href + ')' : 'HTTP ' + r.status + ' ❌']);
+            rows.push(['Manifest', r.ok ? '読み込み成功 ✅' : 'HTTP ' + r.status + ' ❌']);
             renderRows(rows);
           }).catch(function (e) {
             rows.push(['Manifest', '取得エラー ❌ — ' + e.message]);
             renderRows(rows);
           });
         } else {
-          rows.push(['Manifest', 'link[rel=manifest] なし ❌']);
+          rows.push(['Manifest', 'link[rel=manifest] なし — welcome には不要']);
         }
 
-        // 3. インストール可否 (deferredPrompt)
-        var promptStatus = window._deferredInstallPrompt
+        const promptStatus = window._deferredInstallPrompt
           ? 'プロンプト受信済み ✅'
-          : (window.InstallHandler && window.InstallHandler.deferredPrompt
-              ? 'InstallHandler に保持 ✅'
-              : '未受信 / iOS または非対応 ⚠️');
-        rows.push(['インストールプロンプト', promptStatus]);
+          : '未受信（インストール済み / iOS / 非対応）';
+        rows.push(['beforeinstallprompt', promptStatus]);
 
-        // 4. beforeinstallprompt 受信状態
-        rows.push(['beforeinstallprompt', window._deferredInstallPrompt ? '受信済み ✅' : '未受信（iOS/既インスト/非対応）']);
-
-        // 5. ディスプレイモード
-        var dm = 'browser';
+        let dm = 'browser';
         if (window.matchMedia('(display-mode: standalone)').matches) dm = 'standalone';
         else if (window.navigator.standalone) dm = 'standalone (iOS)';
         rows.push(['ディスプレイモード', dm]);
 
-        // 6. OS 判定
-        var ua = navigator.userAgent;
-        var os = /iPad|iPhone|iPod/.test(ua) ? 'iOS' : /Android/.test(ua) ? 'Android' : 'PC/Other';
-        rows.push(['OS', os + ' — ' + ua.slice(0, 60) + '…']);
-
-        // 7. localStorage user_installed
+        const ua = navigator.userAgent;
+        const os = /iPad|iPhone|iPod/.test(ua) ? 'iOS' : /Android/.test(ua) ? 'Android' : 'PC/Other';
+        rows.push(['OS', os]);
         rows.push(['user_installed フラグ', localStorage.getItem('user_installed') || '(未設定)']);
 
         renderRows(rows);
