@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0F1419">
+  <meta name="description" content="Rainbow System を、7日間体験。実際のサロンで配信されるトレードシグナルを疑似体験できるトレーニングアプリ。">
+  <meta name="format-detection" content="telephone=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+  <!-- OGP -->
+  <meta property="og:title" content="Rainbow Trial — Rainbow System を、7日間体験。">
+  <meta property="og:description" content="Rainbow System を疑似体験できる、7日間のトレーニングアプリ。">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="assets/og-image.svg">
+  <meta property="og:image:type" content="image/svg+xml">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <title>Rainbow Trial — 体験をはじめる</title>
+
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="apple-touch-icon" href="assets/favicon.svg">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/components.css">
+
+  <style>
+    /* welcome 固有の微調整 */
+    .welcome__mode {
+      width: 100%;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: var(--sp-3) var(--sp-4);
+      display: flex;
+      align-items: center;
+      gap: var(--sp-3);
+      text-align: left;
+      cursor: pointer;
+      user-select: none;
+      transition: border-color var(--dur-1) var(--ease), background var(--dur-1) var(--ease);
+    }
+    .welcome__mode:hover { border-color: var(--border-light); }
+    .welcome__mode.is-active {
+      border-color: var(--color-info);
+      background: linear-gradient(135deg, rgba(79,195,247,0.08), transparent);
+    }
+    .welcome__mode-text { flex: 1; }
+    .welcome__mode-title {
+      font-weight: 700;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.95rem;
+    }
+    .welcome__mode-desc {
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+      line-height: 1.55;
+      margin-top: 2px;
+    }
+    .toggle {
+      position: relative;
+      width: 44px; height: 24px;
+      flex: 0 0 44px;
+      background: var(--bg-tertiary);
+      border-radius: 999px;
+      transition: background var(--dur-1) var(--ease);
+    }
+    .toggle::after {
+      content: '';
+      position: absolute;
+      top: 3px; left: 3px;
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      transition: transform var(--dur-2) var(--ease), background var(--dur-1) var(--ease);
+    }
+    .welcome__mode.is-active .toggle { background: rgba(79,195,247,0.35); }
+    .welcome__mode.is-active .toggle::after { transform: translateX(20px); background: var(--color-info); }
+
+    /* Loading */
+    .welcome__loading {
+      display: none;
+      margin-top: var(--sp-5);
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+    .welcome__loading.is-visible { display: block; animation: fadein 0.4s ease; }
+  </style>
+</head>
+<body>
+
+  <main class="welcome" role="main">
+    <div class="welcome__inner">
+
+      <img src="assets/logo.svg" alt="Rainbow Trial" class="welcome__logo">
+
+      <h1 class="welcome__title">
+        Rainbow System を、<br>
+        <em>7日間体験。</em>
+      </h1>
+
+      <p class="welcome__desc">
+        実際のサロンで配信される<br>
+        トレードシグナルを疑似体験。<br>
+        あなたの判断力が試される、<br>
+        7日間のトレーニング。
+      </p>
+
+      <form class="welcome__form" id="welcome-form" autocomplete="off" novalidate>
+
+        <!-- ニックネーム入力 -->
+        <div class="field" id="field-nickname">
+          <label class="field__label" for="nickname">ニックネーム</label>
+          <input
+            id="nickname"
+            name="nickname"
+            type="text"
+            class="field__input"
+            placeholder="お好きなニックネームを入力"
+            maxlength="20"
+            autocapitalize="off"
+            autocorrect="off"
+            spellcheck="false"
+            required>
+          <div class="field__error" id="err-nickname"></div>
+        </div>
+
+        <!-- テストモードスイッチ -->
+        <div
+          class="welcome__mode"
+          id="test-mode-toggle"
+          role="switch"
+          tabindex="0"
+          aria-checked="false"
+          aria-label="テストモード">
+          <div class="welcome__mode-text">
+            <div class="welcome__mode-title">⚙️ テストモード</div>
+            <div class="welcome__mode-desc">
+              ON にするとシグナルが <strong>1分間隔</strong> で配信されます(動作確認用)
+            </div>
+          </div>
+          <span class="toggle" aria-hidden="true"></span>
+        </div>
+
+        <!-- 規約同意 -->
+        <label class="check" id="field-agree">
+          <input type="checkbox" id="agree" name="agree">
+          <span>
+            <a href="#" id="open-terms">利用規約</a>に同意します
+          </span>
+        </label>
+        <div class="field__error" id="err-agree"></div>
+
+        <!-- スタート -->
+        <button type="submit" class="btn btn--primary btn--lg btn--block" id="start-btn">
+          🎯 体験をスタート
+        </button>
+
+      </form>
+
+      <div class="welcome__loading" id="loading">準備中…</div>
+
+      <p class="welcome__note">
+        このアプリは疑似体験用です。<br>
+        実際の取引は行われません。<br>
+        仮想資金 <strong>¥300,000</strong> でスタートします。
+      </p>
+
+    </div>
+  </main>
+
+  <!-- 利用規約モーダル(簡易) -->
+  <div class="overlay" id="terms-overlay" role="dialog" aria-modal="true" aria-labelledby="terms-title">
+    <div class="overlay__card" style="max-width: 520px;">
+      <h2 id="terms-title" style="font-size: 1.2rem; margin-bottom: var(--sp-3);">利用規約(かんたん版)</h2>
+      <div style="color: var(--text-secondary); line-height: 1.75; font-size: 0.92rem;">
+        <p style="margin-bottom: var(--sp-3);">本アプリ「Rainbow Trial」は、FX システムの <strong>疑似体験</strong> を目的としたデモアプリです。</p>
+        <ul style="padding-left: 1.2em; margin-bottom: var(--sp-3);">
+          <li>実際の金融取引は一切行われません。</li>
+          <li>表示される価格やチャートは、学習用に生成された架空のデータです。</li>
+          <li>本アプリの体験結果は、実際の投資成績を保証するものではありません。</li>
+          <li>あなたの入力したニックネームと進捗は、お使いのブラウザ内にのみ保存されます(外部送信なし)。</li>
+          <li>ブラウザデータをクリアすると、進捗はリセットされます。</li>
+        </ul>
+        <p>投資判断はご自身の責任で行ってください。</p>
+      </div>
+      <div style="display:flex; justify-content:flex-end; margin-top: var(--sp-5);">
+        <button class="btn btn--primary" id="close-terms">閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 依存: localStorage のみ触るので、storage.js だけで足りる -->
+  <script src="js/storage.js"></script>
+
+  <script>
+    (function () {
+      'use strict';
+
+      // 起動済みなら index.html へリダイレクト
+      if (window.TrialStore && window.TrialStore.isInitialized()) {
+        window.location.replace('index.html');
+        return;
+      }
+
+      const form       = document.getElementById('welcome-form');
+      const nicknameEl = document.getElementById('nickname');
+      const agreeEl    = document.getElementById('agree');
+      const modeEl     = document.getElementById('test-mode-toggle');
+      const errName    = document.getElementById('err-nickname');
+      const errAgree   = document.getElementById('err-agree');
+      const loading    = document.getElementById('loading');
+      const startBtn   = document.getElementById('start-btn');
+
+      // --- テストモードトグル -----------------------------------------------
+      let testMode = false;
+      function setTestMode(v) {
+        testMode = !!v;
+        modeEl.classList.toggle('is-active', testMode);
+        modeEl.setAttribute('aria-checked', testMode ? 'true' : 'false');
+      }
+      modeEl.addEventListener('click', function () { setTestMode(!testMode); });
+      modeEl.addEventListener('keydown', function (e) {
+        if (e.key === ' ' || e.key === 'Enter') {
+          e.preventDefault();
+          setTestMode(!testMode);
+        }
+      });
+
+      // --- 規約モーダル -----------------------------------------------------
+      const termsOverlay = document.getElementById('terms-overlay');
+      const openTerms    = document.getElementById('open-terms');
+      const closeTerms   = document.getElementById('close-terms');
+      openTerms.addEventListener('click', function (e) {
+        e.preventDefault();
+        termsOverlay.classList.add('is-open');
+      });
+      closeTerms.addEventListener('click', function () {
+        termsOverlay.classList.remove('is-open');
+      });
+      termsOverlay.addEventListener('click', function (e) {
+        if (e.target === termsOverlay) termsOverlay.classList.remove('is-open');
+      });
+
+      // --- バリデーション ---------------------------------------------------
+      function validate() {
+        let ok = true;
+        const nick = (nicknameEl.value || '').trim();
+        if (!nick) {
+          errName.textContent = 'ニックネームを入力してください';
+          document.getElementById('field-nickname').classList.add('field--error');
+          ok = false;
+        } else if (nick.length > 20) {
+          errName.textContent = '20 文字以内で入力してください';
+          document.getElementById('field-nickname').classList.add('field--error');
+          ok = false;
+        } else {
+          errName.textContent = '';
+          document.getElementById('field-nickname').classList.remove('field--error');
+        }
+        if (!agreeEl.checked) {
+          errAgree.textContent = '利用規約への同意が必要です';
+          ok = false;
+        } else {
+          errAgree.textContent = '';
+        }
+        return ok;
+      }
+      nicknameEl.addEventListener('input', function () {
+        if (errName.textContent) validate();
+      });
+      agreeEl.addEventListener('change', function () {
+        if (errAgree.textContent) validate();
+      });
+
+      // --- 送信 -------------------------------------------------------------
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        if (!validate()) return;
+        if (!window.TrialStore) {
+          alert('初期化に失敗しました。ページを再読み込みしてください。');
+          return;
+        }
+        const nickname = nicknameEl.value.trim();
+        try {
+          window.TrialStore.initUser(nickname, true, testMode);
+          startBtn.disabled = true;
+          loading.classList.add('is-visible');
+          loading.textContent = 'ようこそ、' + nickname + ' さん 🌈';
+          setTimeout(function () {
+            window.location.replace('index.html');
+          }, 650);
+        } catch (err) {
+          console.error(err);
+          alert('初期化エラー: ' + (err.message || err));
+          startBtn.disabled = false;
+        }
+      });
+
+      // 起動時にニックネーム入力にフォーカス(モバイルは除く=スクロール防止)
+      if (!/Mobi|Android/i.test(navigator.userAgent)) {
+        setTimeout(function () { nicknameEl.focus(); }, 200);
+      }
+    })();
+  </script>
+
+</body>
+</html>

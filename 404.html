@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0F1419">
+  <meta name="description" content="ページが見つかりませんでした。">
+  <meta name="robots" content="noindex">
+
+  <title>404 — Rainbow Trial</title>
+
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/components.css">
+
+  <style>
+    .not-found {
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: var(--sp-7) var(--sp-4);
+      text-align: center;
+      background:
+        radial-gradient(700px 400px at 50% -10%, rgba(151,117,250,0.18), transparent 60%),
+        radial-gradient(500px 300px at 80% 110%, rgba(77,171,247,0.12), transparent 60%),
+        var(--bg-primary);
+      position: relative;
+      overflow: hidden;
+    }
+    .not-found::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(var(--chart-grid) 1px, transparent 1px),
+        linear-gradient(90deg, var(--chart-grid) 1px, transparent 1px);
+      background-size: 40px 40px;
+      opacity: 0.08;
+      pointer-events: none;
+    }
+    .not-found__inner {
+      position: relative;
+      z-index: 1;
+      max-width: 460px;
+      width: 100%;
+    }
+    .not-found__code {
+      font-family: var(--font-mono);
+      font-size: 5rem;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -0.04em;
+      background: var(--rainbow-gradient);
+      -webkit-background-clip: text;
+              background-clip: text;
+      -webkit-text-fill-color: transparent;
+              color: transparent;
+      margin-bottom: var(--sp-4);
+    }
+    .not-found__title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: var(--sp-3);
+    }
+    .not-found__desc {
+      color: var(--text-secondary);
+      line-height: 1.8;
+      margin-bottom: var(--sp-6);
+    }
+    .not-found__actions {
+      display: flex;
+      gap: var(--sp-2);
+      flex-direction: column;
+    }
+    @media (min-width: 480px) {
+      .not-found__actions { flex-direction: row; justify-content: center; }
+    }
+    .not-found__logo {
+      width: 200px;
+      margin-bottom: var(--sp-5);
+      opacity: 0.88;
+    }
+  </style>
+</head>
+<body>
+  <main class="not-found" role="main">
+    <div class="not-found__inner">
+      <img src="assets/logo.svg" alt="Rainbow Trial" class="not-found__logo">
+
+      <div class="not-found__code">404</div>
+
+      <h1 class="not-found__title">ページが見つかりませんでした</h1>
+
+      <p class="not-found__desc">
+        お探しのページは存在しないか、<br>
+        移動・削除された可能性があります。
+      </p>
+
+      <div class="not-found__actions">
+        <a href="index.html" class="btn btn--primary btn--lg">🏠 ホームに戻る</a>
+        <a href="welcome.html" class="btn btn--secondary btn--lg">🌈 最初から始める</a>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <radialGradient id="bgGrad" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#1A1F2E"/>
+      <stop offset="100%" stop-color="#0F1419"/>
+    </radialGradient>
+  </defs>
+  <!-- 背景(角丸正方形) -->
+  <rect x="0" y="0" width="64" height="64" rx="14" ry="14" fill="url(#bgGrad)"/>
+
+  <!-- 虹のアーク -->
+  <g transform="translate(8, 14)">
+    <path d="M 4 36 A 24 24 0 0 1 52 36" fill="none" stroke="#FF6B6B" stroke-width="3" stroke-linecap="round"/>
+    <path d="M 8 36 A 20 20 0 0 1 48 36" fill="none" stroke="#FFA94D" stroke-width="3" stroke-linecap="round"/>
+    <path d="M 12 36 A 16 16 0 0 1 44 36" fill="none" stroke="#FFD43B" stroke-width="3" stroke-linecap="round"/>
+    <path d="M 16 36 A 12 12 0 0 1 40 36" fill="none" stroke="#8CE99A" stroke-width="3" stroke-linecap="round"/>
+    <path d="M 20 36 A 8 8 0 0 1 36 36" fill="none" stroke="#4DABF7" stroke-width="3" stroke-linecap="round"/>
+    <path d="M 24 36 A 4 4 0 0 1 32 36" fill="none" stroke="#9775FA" stroke-width="3" stroke-linecap="round"/>
+  </g>
+
+  <!-- 足元の地面ライン -->
+  <line x1="10" y1="50" x2="54" y2="50" stroke="#2D3548" stroke-width="2" stroke-linecap="round"/>
+</svg>

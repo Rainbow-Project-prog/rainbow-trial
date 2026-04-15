@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0F1419"/>
+      <stop offset="100%" stop-color="#1A1F2E"/>
+    </linearGradient>
+    <linearGradient id="rainbowText" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FF6B6B"/>
+      <stop offset="16%" stop-color="#FFA94D"/>
+      <stop offset="33%" stop-color="#FFD43B"/>
+      <stop offset="50%" stop-color="#8CE99A"/>
+      <stop offset="66%" stop-color="#4DABF7"/>
+      <stop offset="83%" stop-color="#9775FA"/>
+      <stop offset="100%" stop-color="#F783AC"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FF6B6B" stop-opacity="0.15"/>
+      <stop offset="50%" stop-color="#4DABF7" stop-opacity="0.1"/>
+      <stop offset="100%" stop-color="#9775FA" stop-opacity="0.15"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 背景 -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+
+  <!-- うっすらグリッド -->
+  <g stroke="#2A3145" stroke-width="1" opacity="0.4">
+    <line x1="0" y1="157" x2="1200" y2="157"/>
+    <line x1="0" y1="315" x2="1200" y2="315"/>
+    <line x1="0" y1="472" x2="1200" y2="472"/>
+    <line x1="300" y1="0" x2="300" y2="630"/>
+    <line x1="600" y1="0" x2="600" y2="630"/>
+    <line x1="900" y1="0" x2="900" y2="630"/>
+  </g>
+
+  <!-- 左側: 虹のアーク + ローソク足 -->
+  <g transform="translate(110, 200)">
+    <!-- 虹 -->
+    <path d="M 10 160 A 80 80 0 0 1 170 160" fill="none" stroke="#FF6B6B" stroke-width="10" stroke-linecap="round"/>
+    <path d="M 25 160 A 65 65 0 0 1 155 160" fill="none" stroke="#FFA94D" stroke-width="10" stroke-linecap="round"/>
+    <path d="M 40 160 A 50 50 0 0 1 140 160" fill="none" stroke="#FFD43B" stroke-width="10" stroke-linecap="round"/>
+    <path d="M 55 160 A 35 35 0 0 1 125 160" fill="none" stroke="#8CE99A" stroke-width="10" stroke-linecap="round"/>
+    <path d="M 70 160 A 20 20 0 0 1 110 160" fill="none" stroke="#4DABF7" stroke-width="10" stroke-linecap="round"/>
+  </g>
+
+  <!-- 右側: ローソク足ミニチャート -->
+  <g transform="translate(760, 210)">
+    <!-- ヒゲ+ボディ 8本 -->
+    <g stroke="#26A69A" stroke-width="2">
+      <line x1="0" y1="100" x2="0" y2="150"/>
+      <line x1="40" y1="70" x2="40" y2="130"/>
+      <line x1="120" y1="50" x2="120" y2="110"/>
+      <line x1="200" y1="30" x2="200" y2="90"/>
+    </g>
+    <g stroke="#EF5350" stroke-width="2">
+      <line x1="80" y1="80" x2="80" y2="140"/>
+      <line x1="160" y1="60" x2="160" y2="120"/>
+      <line x1="240" y1="50" x2="240" y2="110"/>
+      <line x1="280" y1="40" x2="280" y2="100"/>
+    </g>
+    <rect x="-8" y="110" width="16" height="30" fill="#26A69A"/>
+    <rect x="32" y="80" width="16" height="40" fill="#26A69A"/>
+    <rect x="72" y="90" width="16" height="45" fill="#EF5350"/>
+    <rect x="112" y="60" width="16" height="40" fill="#26A69A"/>
+    <rect x="152" y="70" width="16" height="40" fill="#EF5350"/>
+    <rect x="192" y="40" width="16" height="40" fill="#26A69A"/>
+    <rect x="232" y="60" width="16" height="40" fill="#EF5350"/>
+    <rect x="272" y="50" width="16" height="40" fill="#EF5350"/>
+
+    <!-- MA 風の曲線 -->
+    <path d="M -10 120 Q 60 100, 140 90 T 290 70" fill="none" stroke="#2196F3" stroke-width="2.5" opacity="0.9"/>
+    <path d="M -10 140 Q 60 130, 140 120 T 290 100" fill="none" stroke="#FF6B6B" stroke-width="2.5" opacity="0.9"/>
+  </g>
+
+  <!-- タイトル -->
+  <g transform="translate(110, 440)">
+    <text x="0" y="0" font-family="'Inter', 'Helvetica Neue', Arial, sans-serif" font-weight="800" font-size="74" fill="#F5F7FA" letter-spacing="-2">Rainbow</text>
+    <text x="320" y="0" font-family="'Inter', 'Helvetica Neue', Arial, sans-serif" font-weight="800" font-size="74" fill="url(#rainbowText)" letter-spacing="-1">Trial</text>
+  </g>
+
+  <!-- サブタイトル -->
+  <text x="110" y="510" font-family="'Noto Sans JP', 'Hiragino Sans', sans-serif" font-weight="500" font-size="32" fill="#A8B2C7">Rainbow System を、7日間体験。</text>
+
+  <!-- シリーズバッジ -->
+  <g transform="translate(110, 560)">
+    <rect x="0" y="0" width="280" height="36" rx="18" ry="18" fill="#232938" stroke="#2D3548" stroke-width="1"/>
+    <text x="140" y="24" font-family="'Inter', sans-serif" font-weight="600" font-size="14" fill="#A8B2C7" text-anchor="middle" letter-spacing="1">RAINBOW PROJECT SERIES</text>
+  </g>
+
+  <!-- 右下: 仮想資金タグ -->
+  <g transform="translate(860, 540)">
+    <rect x="0" y="0" width="260" height="56" rx="10" ry="10" fill="#1A1F2E" stroke="#2D3548"/>
+    <text x="20" y="22" font-family="'Inter', sans-serif" font-weight="500" font-size="12" fill="#6B7588" letter-spacing="1.5">STARTING CAPITAL</text>
+    <text x="20" y="46" font-family="'JetBrains Mono', monospace" font-weight="700" font-size="22" fill="#FFD700">¥ 300,000</text>
+  </g>
+</svg>

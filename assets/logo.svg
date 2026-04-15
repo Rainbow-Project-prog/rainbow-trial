@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 72" width="240" height="72" role="img" aria-label="Rainbow Trial">
+  <defs>
+    <linearGradient id="rainbow" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FF6B6B"/>
+      <stop offset="16%" stop-color="#FFA94D"/>
+      <stop offset="33%" stop-color="#FFD43B"/>
+      <stop offset="50%" stop-color="#8CE99A"/>
+      <stop offset="66%" stop-color="#4DABF7"/>
+      <stop offset="83%" stop-color="#9775FA"/>
+      <stop offset="100%" stop-color="#F783AC"/>
+    </linearGradient>
+    <linearGradient id="candleUp" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#26A69A"/>
+      <stop offset="100%" stop-color="#00E676"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 虹のアーク -->
+  <g transform="translate(8,10)">
+    <path d="M 4 46 A 24 24 0 0 1 52 46" fill="none" stroke="#FF6B6B" stroke-width="4" stroke-linecap="round"/>
+    <path d="M 9 46 A 19 19 0 0 1 47 46" fill="none" stroke="#FFA94D" stroke-width="4" stroke-linecap="round"/>
+    <path d="M 14 46 A 14 14 0 0 1 42 46" fill="none" stroke="#FFD43B" stroke-width="4" stroke-linecap="round"/>
+    <path d="M 19 46 A 9 9 0 0 1 37 46" fill="none" stroke="#8CE99A" stroke-width="4" stroke-linecap="round"/>
+    <path d="M 24 46 A 4 4 0 0 1 32 46" fill="none" stroke="#4DABF7" stroke-width="4" stroke-linecap="round"/>
+    <!-- 小さなローソク足のアクセント -->
+    <line x1="56" y1="28" x2="56" y2="46" stroke="#A8B2C7" stroke-width="1"/>
+    <rect x="53" y="32" width="6" height="10" fill="url(#candleUp)"/>
+  </g>
+
+  <!-- テキスト -->
+  <g transform="translate(80, 0)">
+    <text x="0" y="32" font-family="'Inter', 'Helvetica Neue', Arial, sans-serif" font-weight="800" font-size="22" fill="#F5F7FA" letter-spacing="-0.5">Rainbow</text>
+    <text x="0" y="56" font-family="'Inter', 'Helvetica Neue', Arial, sans-serif" font-weight="800" font-size="22" fill="url(#rainbow)" letter-spacing="0.5">Trial</text>
+  </g>
+</svg>

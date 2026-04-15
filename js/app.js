@@ -1,0 +1,1094 @@
+/* ==========================================================================
+ * Rainbow Trial — js/app.js
+ * メインアプリ。全モジュールの統合と画面遷移を司る。
+ *
+ * 画面(screen):
+ *   'main'     — タブ構成(ホーム / シグナル / 履歴)
+ *   'detail'   — シグナル詳細 + チャート + 判定
+ *   'position' — ポジション保有中(ライブ)
+ *   'result'   — 結果(勝ち/負け/見送り)
+ *
+ * 依存モジュール:
+ *   TrialStore / GameState / ScenarioUtil / Notifications / Signals / Trade
+ *   Judgment / RainbowChart
+ *
+ * 公開: window.App
+ * ========================================================================== */
+
+(function (global) {
+  'use strict';
+
+  const MAIN_TABS = ['home', 'signals', 'history'];
+  const HISTORY_FILTERS = [
+    { key: 'all',    label: '全て' },
+    { key: 'usdjpy', label: 'USDJPY' },
+    { key: 'btcusd', label: 'BTCUSD' },
+    { key: 'win',    label: '勝ち' },
+    { key: 'lose',   label: '負け' },
+    { key: 'skip',   label: '見送り' }
+  ];
+
+  const App = {
+    state: {
+      screen: 'main',       // 'main' | 'detail' | 'position' | 'result'
+      tab:    'home',       // 'home' | 'signals' | 'history'
+      detailSignalId: null,
+      resultContext:  null, // { signal, trade, pnl, skipped }
+      historyFilter:  'all',
+      uiTickTimer:    null
+    },
+    chart: null,
+
+    /* ======================================================================
+     * 初期化
+     * ====================================================================== */
+    init: function () {
+      if (!global.TrialStore || !global.TrialStore.isInitialized()) {
+        global.location.replace('welcome.html');
+        return;
+      }
+
+      global.Notifications.init();
+      global.Signals.init();
+      global.Trade.init();
+
+      this.hookNotifications();
+      this.bindGlobalEvents();
+      this.subscribeEvents();
+      this.renderAll();
+      this.startUiTick();
+
+      if (global.Trade.getCurrentPosition()) {
+        // 保有中なら直接ポジション画面へ
+        this.showScreen('position');
+      } else {
+        this.showScreen('main');
+      }
+
+      // 起動直後の最後アクティブ更新
+      global.TrialStore.updateLastActive();
+    },
+
+    hookNotifications: function () {
+      const self = this;
+      global.Notifications.setViewHandler(function (id) { self.openSignalDetail(id); });
+      global.Notifications.setDismissHandler(function (id) { global.Signals.markDismissedBar(id); });
+      global.Notifications.setSummaryHandler(function () {
+        // 通知バーの「他 N 件」→ シグナルタブを開く
+        self.setTab('signals');
+      });
+    },
+
+    bindGlobalEvents: function () {
+      const self = this;
+      // タブ
+      document.querySelectorAll('.tabbar__btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          self.setTab(btn.getAttribute('data-tab'));
+        });
+      });
+      // ヘッダー資金クリック(プレースホルダ)
+      const cap = document.getElementById('header-capital');
+      if (cap) cap.addEventListener('click', function () { self.setTab('history'); });
+
+      // 学習モーダル用のクローズ
+      const learnOverlay = document.getElementById('overlay-learning');
+      if (learnOverlay) {
+        learnOverlay.addEventListener('click', function (e) {
+          if (e.target === learnOverlay || e.target.classList.contains('overlay-learning__close')) {
+            learnOverlay.classList.remove('is-open');
+          }
+        });
+      }
+    },
+
+    subscribeEvents: function () {
+      const self = this;
+      global.GameState.subscribe(function (evt) { self.onGameEvent(evt); });
+      global.Trade.subscribe(function (evt) { self.onTradeEvent(evt); });
+    },
+
+    startUiTick: function () {
+      const self = this;
+      if (this.state.uiTickTimer) return;
+      this.state.uiTickTimer = setInterval(function () {
+        self.tickSoftUpdate();
+      }, 1000);
+    },
+
+    tickSoftUpdate: function () {
+      this.updateHeader();
+      if (this.state.screen === 'main' && this.state.tab === 'home') {
+        this.updateHomeNextSignal();
+        this.updateHomePosition();
+      }
+    },
+
+    /* ======================================================================
+     * イベントハンドラ
+     * ====================================================================== */
+    onGameEvent: function (evt) {
+      switch (evt.type) {
+        case 'signal_delivered':
+        case 'signal_viewed':
+        case 'signal_entered':
+        case 'signal_skipped':
+        case 'signal_completed':
+        case 'account_changed':
+        case 'trade_recorded':
+          this.renderCurrentScreen();
+          this.updateHeader();
+          break;
+      }
+    },
+
+    onTradeEvent: function (evt) {
+      switch (evt.type) {
+        case 'position_opened':
+          this.showScreen('position');
+          this.renderPosition();
+          break;
+        case 'price_tick':
+          this.updatePositionLive(evt);
+          break;
+        case 'mode_switched':
+          this.renderPosition();
+          break;
+        case 'position_landed':
+          this.handlePositionLanded(evt);
+          break;
+        case 'position_closed':
+          this.state.resultContext = {
+            signal:  evt.signal,
+            trade:   evt.trade,
+            pnl:     evt.pnl,
+            skipped: false
+          };
+          this.showScreen('result');
+          this.renderResult();
+          break;
+        case 'skip_recorded':
+          this.state.resultContext = {
+            signal:  evt.signal,
+            trade:   evt.trade,
+            pnl:     0,
+            skipped: true
+          };
+          this.showScreen('result');
+          this.renderResult();
+          break;
+      }
+    },
+
+    /**
+     * progress=1 到達時のビジュアル反応:
+     *  - 操作ボタンを一時的に無効化
+     *  - チャート上にライブ価格を最終値で固定
+     *  - 「TP HIT!」/「SL HIT」のフラッシュバッジ表示
+     */
+    handlePositionLanded: function (evt) {
+      if (this.state.screen !== 'position') return;
+      const root = document.getElementById('screen-position');
+      if (!root) return;
+
+      // 操作ボタン無効化
+      root.querySelectorAll('.live-actions .btn').forEach(function (b) {
+        b.disabled = true;
+        b.classList.add('is-disabled');
+      });
+
+      // ライブ価格を最終値に固定反映
+      const priceEl = root.querySelector('[data-role="live-price"]');
+      const signal  = evt.signal;
+      if (priceEl && signal) priceEl.textContent = evt.price.toFixed(signal.decimals);
+      if (this.chart) this.chart.setLivePrice(evt.price);
+
+      // 結果フラッシュバッジ(フェード消滅は result 遷移で)
+      let flash = document.getElementById('pos-flash');
+      if (!flash) {
+        flash = document.createElement('div');
+        flash.id = 'pos-flash';
+        flash.className = 'pos-flash';
+        root.appendChild(flash);
+      }
+      const isWin = (evt.result === 'tp_hit');
+      flash.classList.remove('pos-flash--lose', 'pos-flash--win');
+      flash.classList.add(isWin ? 'pos-flash--win' : 'pos-flash--lose');
+      flash.textContent = isWin ? '🏆 TP HIT!' : '📉 SL HIT';
+      flash.classList.add('is-visible');
+    },
+
+    /* ======================================================================
+     * 画面遷移
+     * ====================================================================== */
+    showScreen: function (name) {
+      this.state.screen = name;
+      document.querySelectorAll('.screen').forEach(function (el) {
+        el.classList.toggle('is-active', el.id === 'screen-' + name);
+      });
+      const tabbar = document.getElementById('tabbar');
+      if (tabbar) tabbar.classList.toggle('hidden', name !== 'main');
+      global.scrollTo(0, 0);
+
+      // チャートインスタンスのクリーンアップ(画面離脱時)
+      if (name !== 'detail' && name !== 'position' && this.chart) {
+        this.chart.destroy();
+        this.chart = null;
+      }
+    },
+
+    setTab: function (tab) {
+      if (MAIN_TABS.indexOf(tab) < 0) return;
+      this.state.tab = tab;
+      document.querySelectorAll('.tabbar__btn').forEach(function (btn) {
+        btn.classList.toggle('is-active', btn.getAttribute('data-tab') === tab);
+      });
+      document.querySelectorAll('.panel').forEach(function (p) {
+        p.classList.toggle('is-active', p.getAttribute('data-panel') === tab);
+      });
+      this.showScreen('main');
+      this.renderTab();
+    },
+
+    openSignalDetail: function (signalId) {
+      const sig = global.ScenarioUtil.getById(signalId);
+      if (!sig) return;
+      this.state.detailSignalId = signalId;
+      global.Signals.markViewed(signalId);
+      this.showScreen('detail');
+      this.renderDetail();
+    },
+
+    goHome: function () {
+      this.state.tab = 'home';
+      this.showScreen('main');
+      document.querySelectorAll('.tabbar__btn').forEach(function (btn) {
+        btn.classList.toggle('is-active', btn.getAttribute('data-tab') === 'home');
+      });
+      document.querySelectorAll('.panel').forEach(function (p) {
+        p.classList.toggle('is-active', p.getAttribute('data-panel') === 'home');
+      });
+      this.renderHome();
+    },
+
+    /* ======================================================================
+     * 全体再描画
+     * ====================================================================== */
+    renderAll: function () {
+      this.updateHeader();
+      this.renderHome();
+      this.renderSignals();
+      this.renderHistory();
+    },
+
+    renderCurrentScreen: function () {
+      switch (this.state.screen) {
+        case 'main':     this.renderTab(); break;
+        case 'detail':   this.renderDetail(); break;
+        case 'position': this.renderPosition(); break;
+        case 'result':   this.renderResult(); break;
+      }
+    },
+
+    renderTab: function () {
+      switch (this.state.tab) {
+        case 'home':    this.renderHome(); break;
+        case 'signals': this.renderSignals(); break;
+        case 'history': this.renderHistory(); break;
+      }
+    },
+
+    /* ======================================================================
+     * ヘッダー
+     * ====================================================================== */
+    updateHeader: function () {
+      const snap = global.GameState.snapshot();
+      const dayEl = document.getElementById('header-day');
+      const capEl = document.getElementById('header-capital');
+      if (dayEl) dayEl.textContent = 'Day ' + snap.displayDay + ' / 7';
+      if (capEl) capEl.textContent = global.GameState.formatCapital(snap.account.currentCapital);
+    },
+
+    /* ======================================================================
+     * ホームタブ
+     * ====================================================================== */
+    renderHome: function () {
+      const root = document.getElementById('panel-home');
+      if (!root) return;
+      const snap = global.GameState.snapshot();
+      const unviewed = global.Signals.getAllUnviewed();
+      const pos = global.Trade.getCurrentPosition();
+      const stats = snap.stats;
+
+      let html = '';
+
+      // 進捗バー
+      html += this._renderProgressBar(snap);
+
+      // 資金カード
+      html += this._renderCapitalCard(snap.account, stats);
+
+      // 戦績ミニ
+      html += this._renderStatsMini(stats);
+
+      // 保有ポジション
+      if (pos) {
+        html += this._renderPositionCard(pos);
+      }
+
+      // 次のシグナル予測
+      html += this._renderNextSignalCard(snap.next);
+
+      // 学習リンク
+      html +=
+        '<div class="card card--compact" id="learn-link-card" role="button" tabindex="0" style="cursor:pointer; text-align:center; margin: var(--sp-4) 0;">' +
+          '<strong>📚 条件の見方を確認する</strong>' +
+        '</div>';
+
+      // 下部: 未確認シグナル一覧(pending + realtime、新しい順)
+      if (unviewed.length > 0) {
+        html += this._renderUnviewedSection(unviewed);
+      }
+
+      root.innerHTML = html;
+      this._bindHomeEvents();
+    },
+
+    _renderUnviewedSection: function (unviewed) {
+      const rows = unviewed.map(function (p) {
+        const s = p.signal;
+        const rec = p.record;
+        const rel = rec.deliveredAt ? global.GameState.formatRelativeTime(rec.deliveredAt) : '';
+        return (
+          '<div class="signal-item" data-signal-id="' + s.id + '">' +
+            '<div class="signal-item__time mono">' + rel + '</div>' +
+            '<div class="signal-item__main">' +
+              '<div class="signal-item__top">' +
+                '<span class="rarity rarity--' + s.rarity + '">' + global.GameState.rarityLabel(s.rarity) + '</span>' +
+                '<span class="signal-item__pair">' + global.GameState.formatPair(s.pair) + '</span>' +
+                '<span class="badge ' + (s.direction === 'long' ? 'badge--long' : 'badge--short') + '">' +
+                  global.GameState.directionLabel(s.direction) + '</span>' +
+              '</div>' +
+              '<div class="signal-item__status">Signal #' + s.number + '</div>' +
+            '</div>' +
+            '<div class="signal-item__chev">›</div>' +
+          '</div>'
+        );
+      }).join('');
+
+      return (
+        '<section class="card card--rainbow" style="margin-top: var(--sp-6);">' +
+          '<div class="card__header">' +
+            '<div class="card__title">📬 未確認シグナル</div>' +
+            '<div class="rainbow-text mono" style="font-weight:800; font-size:1.2rem;">' + unviewed.length + ' 件</div>' +
+          '</div>' +
+          '<div class="card__body">' + rows + '</div>' +
+          '<div class="card__footer">' +
+            '<button class="btn btn--primary btn--block" id="digest-open-first">最新から確認する</button>' +
+          '</div>' +
+        '</section>'
+      );
+    },
+
+    _renderProgressBar: function (snap) {
+      const pct = (snap.overallProgress * 100).toFixed(1);
+      const dayLabel = (snap.currentDay === 'ended') ? 'Phase 1 完了' : ('Day ' + snap.currentDay + ' 進行中');
+      return (
+        '<div class="progress">' +
+          '<div class="progress__meta">' +
+            '<span><strong>' + dayLabel + '</strong></span>' +
+            '<span>' + snap.displayDay + ' / 7</span>' +
+          '</div>' +
+          '<div class="progress__track">' +
+            '<div class="progress__fill" style="width: ' + pct + '%"></div>' +
+          '</div>' +
+        '</div>'
+      );
+    },
+
+    _renderCapitalCard: function (account, stats) {
+      const pnl = account.totalPnL;
+      const pnlClass = pnl > 0 ? 'capital-card__pnl--positive'
+                    : pnl < 0 ? 'capital-card__pnl--negative'
+                    : 'capital-card__pnl--zero';
+      return (
+        '<section class="capital-card">' +
+          '<div class="capital-card__label">現在の仮想資金</div>' +
+          '<div class="capital-card__amount mono">' + global.GameState.formatCapital(account.currentCapital) + '</div>' +
+          '<div class="capital-card__pnl ' + pnlClass + '">' +
+            '<span>' + global.GameState.formatSignedCurrency(pnl) + '</span>' +
+            '<span class="capital-card__rate mono">' + (stats.capitalRate >= 0 ? '+' : '') + stats.capitalRate + '%</span>' +
+          '</div>' +
+        '</section>'
+      );
+    },
+
+    _renderStatsMini: function (stats) {
+      return (
+        '<section class="stats-mini">' +
+          '<div class="stats-mini__item">' +
+            '<div class="stats-mini__label">Trades</div>' +
+            '<div class="stats-mini__value">' + stats.totalTrades + '</div>' +
+          '</div>' +
+          '<div class="stats-mini__item">' +
+            '<div class="stats-mini__label">W / L</div>' +
+            '<div class="stats-mini__value">' + stats.wins + ' / ' + stats.losses + '</div>' +
+          '</div>' +
+          '<div class="stats-mini__item">' +
+            '<div class="stats-mini__label">Win Rate</div>' +
+            '<div class="stats-mini__value stats-mini__value--accent">' + (stats.winRate || 0) + '%</div>' +
+          '</div>' +
+        '</section>'
+      );
+    },
+
+    _renderPositionCard: function (pos) {
+      const signal = global.ScenarioUtil.getById(pos.signalId);
+      if (!signal) return '';
+      const pnlData = global.Trade.getPositionPnL();
+      const pnl = pnlData ? pnlData.pnl : 0;
+      const pnlSign = pnl > 0 ? 'text-success' : (pnl < 0 ? 'text-danger' : '');
+      return (
+        '<div class="position-card" id="home-position-card" data-signal-id="' + signal.id + '">' +
+          '<span class="position-card__live">LIVE 保有中</span>' +
+          '<div class="position-card__row">' +
+            '<span class="position-card__pair">' + global.GameState.formatPair(signal.pair) + ' ' +
+              '<span class="badge ' + (signal.direction==='long'?'badge--long':'badge--short') + '">' +
+                global.GameState.directionLabel(signal.direction) + '</span></span>' +
+            '<span class="position-card__pnl ' + pnlSign + '">' + global.GameState.formatSignedCurrency(pnl) + '</span>' +
+          '</div>' +
+          '<div style="color: var(--text-muted); font-size:.82rem; margin-top:4px;">タップで詳細へ</div>' +
+        '</div>'
+      );
+    },
+
+    _renderNextSignalCard: function (next) {
+      if (!next) {
+        return (
+          '<div class="next-signal">' +
+            '<div class="next-signal__icon">🏁</div>' +
+            '<div class="next-signal__text">' +
+              '<div class="next-signal__label">Next Signal</div>' +
+              '<div class="next-signal__value">本日の全シグナル配信終了</div>' +
+            '</div>' +
+          '</div>'
+        );
+      }
+      const mins = next.minutesUntil;
+      const dur = global.GameState.formatDuration(mins);
+      const active = mins <= 1;
+      return (
+        '<div class="next-signal ' + (active ? 'is-active' : '') + '">' +
+          '<div class="next-signal__icon">' + (active ? '⚡' : '⏳') + '</div>' +
+          '<div class="next-signal__text">' +
+            '<div class="next-signal__label">Next Signal</div>' +
+            '<div class="next-signal__value">' + (active ? 'まもなく配信!' : ('約 ' + dur + '後')) + '</div>' +
+          '</div>' +
+        '</div>'
+      );
+    },
+
+    _bindHomeEvents: function () {
+      const self = this;
+      // Pending 内の各行
+      document.querySelectorAll('#panel-home .signal-item').forEach(function (el) {
+        el.addEventListener('click', function () {
+          const id = parseInt(el.getAttribute('data-signal-id'), 10);
+          self.openSignalDetail(id);
+        });
+      });
+      // 「最新から確認する」: 未確認の最新(配列先頭)を開く
+      const openFirst = document.getElementById('digest-open-first');
+      if (openFirst) {
+        openFirst.addEventListener('click', function () {
+          const list = global.Signals.getAllUnviewed();
+          if (list.length > 0) self.openSignalDetail(list[0].signal.id);
+        });
+      }
+      // 保有ポジションカード
+      const posCard = document.getElementById('home-position-card');
+      if (posCard) {
+        posCard.addEventListener('click', function () {
+          self.showScreen('position');
+          self.renderPosition();
+        });
+      }
+      // 学習リンク
+      const learn = document.getElementById('learn-link-card');
+      if (learn) {
+        learn.addEventListener('click', function () { self.openLearningModal(); });
+      }
+    },
+
+    updateHomeNextSignal: function () {
+      // 1秒毎に更新したい次シグナルカードだけ差し替え
+      const snap = global.GameState.snapshot();
+      const container = document.querySelector('#panel-home .next-signal');
+      if (!container) return;
+      const next = snap.next;
+      let html;
+      if (!next) {
+        html =
+          '<div class="next-signal__icon">🏁</div>' +
+          '<div class="next-signal__text">' +
+            '<div class="next-signal__label">Next Signal</div>' +
+            '<div class="next-signal__value">本日の全シグナル配信終了</div>' +
+          '</div>';
+        container.classList.remove('is-active');
+      } else {
+        const active = next.minutesUntil <= 1;
+        container.classList.toggle('is-active', active);
+        html =
+          '<div class="next-signal__icon">' + (active ? '⚡' : '⏳') + '</div>' +
+          '<div class="next-signal__text">' +
+            '<div class="next-signal__label">Next Signal</div>' +
+            '<div class="next-signal__value">' + (active ? 'まもなく配信!' : ('約 ' + global.GameState.formatDuration(next.minutesUntil) + '後')) + '</div>' +
+          '</div>';
+      }
+      container.innerHTML = html;
+    },
+
+    updateHomePosition: function () {
+      const posCard = document.getElementById('home-position-card');
+      if (!posCard) return;
+      const pnlData = global.Trade.getPositionPnL();
+      if (!pnlData) return;
+      const pnlEl = posCard.querySelector('.position-card__pnl');
+      if (pnlEl) {
+        pnlEl.className = 'position-card__pnl ' +
+          (pnlData.pnl > 0 ? 'text-success' : (pnlData.pnl < 0 ? 'text-danger' : ''));
+        pnlEl.textContent = global.GameState.formatSignedCurrency(pnlData.pnl);
+      }
+    },
+
+    /* ======================================================================
+     * シグナルタブ
+     * ====================================================================== */
+    renderSignals: function () {
+      const root = document.getElementById('panel-signals');
+      if (!root) return;
+      const list = global.Signals.getDeliveredSignals();
+
+      if (list.length === 0) {
+        root.innerHTML =
+          '<div class="empty">' +
+            '<div class="empty__icon">📡</div>' +
+            '<div class="empty__text">まだシグナルは配信されていません。<br>最初のシグナルまでお待ちください。</div>' +
+          '</div>';
+        return;
+      }
+
+      const items = list.map(function (entry) {
+        const s = entry.signal;
+        const rec = entry.record;
+        const status = rec.status;
+        const statusText = App._statusLabel(status);
+        const time = rec.deliveredAt ? global.GameState.formatClock(rec.deliveredAt) : '--:--';
+        return (
+          '<div class="signal-item" data-signal-id="' + s.id + '">' +
+            '<div class="signal-item__time mono">' + time + '</div>' +
+            '<div class="signal-item__main">' +
+              '<div class="signal-item__top">' +
+                '<span class="rarity rarity--' + s.rarity + '">' + global.GameState.rarityLabel(s.rarity) + '</span>' +
+                '<span class="signal-item__pair">' + global.GameState.formatPair(s.pair) + '</span>' +
+                '<span class="badge ' + (s.direction==='long'?'badge--long':'badge--short') + '">' +
+                  global.GameState.directionLabel(s.direction) + '</span>' +
+              '</div>' +
+              '<div class="signal-item__status">#' + s.number + ' · ' + statusText + '</div>' +
+            '</div>' +
+            '<div class="signal-item__chev">›</div>' +
+          '</div>'
+        );
+      }).join('');
+
+      root.innerHTML = '<div class="section-title">受信シグナル</div>' + items;
+      const self = this;
+      root.querySelectorAll('.signal-item').forEach(function (el) {
+        el.addEventListener('click', function () {
+          const id = parseInt(el.getAttribute('data-signal-id'), 10);
+          self.openSignalDetail(id);
+        });
+      });
+    },
+
+    _statusLabel: function (s) {
+      switch (s) {
+        case 'delivered_realtime':
+        case 'delivered_pending': return '未確認';
+        case 'viewed':             return '確認済み';
+        case 'entered':            return 'エントリー中';
+        case 'skipped':            return '見送り';
+        case 'completed':          return '完了';
+        default:                    return '-';
+      }
+    },
+
+    /* ======================================================================
+     * 履歴タブ
+     * ====================================================================== */
+    renderHistory: function () {
+      const root = document.getElementById('panel-history');
+      if (!root) return;
+
+      const stats = global.TrialStore.computeStats();
+      const all = global.TrialStore.listTrades();
+      const filter = this.state.historyFilter;
+      const filtered = all.filter(App._historyMatches.bind(null, filter));
+
+      let html = '';
+
+      // 統計サマリー
+      html += (
+        '<div class="section-title">戦績サマリー</div>' +
+        '<section class="summary">' +
+          App._summaryItem('総数', stats.totalTrades) +
+          App._summaryItem('勝率', (stats.winRate || 0) + '%') +
+          App._summaryItem('累計損益', global.GameState.formatSignedCurrency(stats.totalPnL)) +
+          App._summaryItem('最大連勝', stats.maxWinStreak) +
+          App._summaryItem('最大連敗', stats.maxLoseStreak) +
+        '</section>'
+      );
+
+      // フィルタ
+      html += '<div class="filter-row">' +
+        HISTORY_FILTERS.map(function (f) {
+          return '<button class="filter-chip ' + (filter === f.key ? 'is-active' : '') +
+            '" data-filter="' + f.key + '">' + f.label + '</button>';
+        }).join('') +
+      '</div>';
+
+      // 履歴リスト
+      if (filtered.length === 0) {
+        html += '<div class="empty"><div class="empty__icon">📜</div>' +
+          '<div class="empty__text">条件に一致する履歴はありません。</div></div>';
+      } else {
+        html += filtered.map(App._renderTradeItem).join('');
+      }
+
+      root.innerHTML = html;
+
+      const self = this;
+      root.querySelectorAll('.filter-chip').forEach(function (chip) {
+        chip.addEventListener('click', function () {
+          self.state.historyFilter = chip.getAttribute('data-filter');
+          self.renderHistory();
+        });
+      });
+    },
+
+    _summaryItem: function (label, value) {
+      return (
+        '<div class="summary__item">' +
+          '<div class="summary__label">' + label + '</div>' +
+          '<div class="summary__value">' + value + '</div>' +
+        '</div>'
+      );
+    },
+
+    _historyMatches: function (filter, t) {
+      if (filter === 'all') return true;
+      if (filter === 'usdjpy') return t.pair === 'USDJPY';
+      if (filter === 'btcusd') return t.pair === 'BTCUSD';
+      if (filter === 'win')    return t.type === 'trade' && t.pnl > 0;
+      if (filter === 'lose')   return t.type === 'trade' && t.pnl < 0;
+      if (filter === 'skip')   return t.type === 'skip';
+      return true;
+    },
+
+    _renderTradeItem: function (t) {
+      let icon, iconClass, pnlClass, pnlText;
+      if (t.type === 'skip') {
+        icon = '⏸️'; iconClass = 'trade-item__icon--skip';
+        pnlClass = 'trade-item__pnl--zero';
+        pnlText = '見送り';
+      } else if (t.pnl > 0) {
+        icon = '✅'; iconClass = 'trade-item__icon--win';
+        pnlClass = 'trade-item__pnl--positive';
+        pnlText = global.GameState.formatSignedCurrency(t.pnl) + ' / ' + global.GameState.formatSignedPips(t.pnlPips);
+      } else {
+        icon = '❌'; iconClass = 'trade-item__icon--lose';
+        pnlClass = 'trade-item__pnl--negative';
+        pnlText = global.GameState.formatSignedCurrency(t.pnl) + ' / ' + global.GameState.formatSignedPips(t.pnlPips);
+      }
+      const sub = (t.entry != null && t.exit != null)
+        ? (t.entry.toFixed(t.pair === 'USDJPY' ? 3 : 1) + ' → ' + t.exit.toFixed(t.pair === 'USDJPY' ? 3 : 1))
+        : '—';
+      return (
+        '<div class="trade-item">' +
+          '<div class="trade-item__icon ' + iconClass + '">' + icon + '</div>' +
+          '<div class="trade-item__main">' +
+            '<div class="trade-item__top">' +
+              '<span class="trade-item__pair">' + global.GameState.formatPair(t.pair) + '</span>' +
+              (t.direction ?
+                '<span class="badge ' + (t.direction==='long'?'badge--long':'badge--short') + '">' +
+                  global.GameState.directionLabel(t.direction) + '</span>'
+                : '') +
+            '</div>' +
+            '<div class="trade-item__sub">' + sub + '</div>' +
+          '</div>' +
+          '<div class="trade-item__pnl ' + pnlClass + '">' + pnlText + '</div>' +
+        '</div>'
+      );
+    },
+
+    /* ======================================================================
+     * シグナル詳細画面
+     * ====================================================================== */
+    renderDetail: function () {
+      const root = document.getElementById('screen-detail');
+      if (!root) return;
+      const id = this.state.detailSignalId;
+      const signal = global.ScenarioUtil.getById(id);
+      if (!signal) {
+        this.goHome();
+        return;
+      }
+
+      const j = global.Judgment.judge(signal);
+      const guide = global.Judgment.getGuideText(signal.direction);
+      const pairJp = global.GameState.formatPair(signal.pair);
+      const dirLabel = global.GameState.directionLabel(signal.direction);
+      const dirIcon = global.GameState.directionIcon(signal.direction);
+      const d = signal.decimals;
+
+      root.innerHTML = (
+        '<div class="page-header">' +
+          '<button class="page-header__back" id="detail-back" aria-label="戻る">←</button>' +
+          '<div class="page-header__title">Signal #' + signal.number + '</div>' +
+          '<div class="page-header__meta"><span class="rarity rarity--' + signal.rarity + '">' +
+            global.GameState.rarityLabel(signal.rarity) + '</span></div>' +
+        '</div>' +
+
+        '<section class="signal-info">' +
+          '<div class="signal-info__header">🌈 RAINBOW SIGNAL</div>' +
+          '<div class="signal-info__body">' +
+            '<div class="signal-info__cell">' +
+              '<div class="signal-info__label">通貨ペア</div>' +
+              '<div class="signal-info__value">' + pairJp + '</div>' +
+            '</div>' +
+            '<div class="signal-info__cell">' +
+              '<div class="signal-info__label">方向</div>' +
+              '<div class="signal-info__value ' + (signal.direction==='long'?'signal-info__value--long':'signal-info__value--short') + '">' +
+                dirIcon + ' ' + dirLabel + '</div>' +
+            '</div>' +
+            '<div class="signal-info__cell">' +
+              '<div class="signal-info__label">Entry</div>' +
+              '<div class="signal-info__value signal-info__value--gold">' + signal.entry.toFixed(d) + '</div>' +
+            '</div>' +
+            '<div class="signal-info__cell">' +
+              '<div class="signal-info__label">RR比</div>' +
+              '<div class="signal-info__value">1 : ' + signal.rr + '</div>' +
+            '</div>' +
+            '<div class="signal-info__cell">' +
+              '<div class="signal-info__label">TP</div>' +
+              '<div class="signal-info__value signal-info__value--green">' +
+                signal.tp.toFixed(d) + ' (+' + signal.tpPips + 'pips)</div>' +
+            '</div>' +
+            '<div class="signal-info__cell">' +
+              '<div class="signal-info__label">SL</div>' +
+              '<div class="signal-info__value signal-info__value--red">' +
+                signal.sl.toFixed(d) + ' (−' + signal.slPips + 'pips)</div>' +
+            '</div>' +
+            '<div class="signal-info__cell">' +
+              '<div class="signal-info__label">推奨ロット</div>' +
+              '<div class="signal-info__value">' + signal.lotSize + '</div>' +
+            '</div>' +
+            '<div class="signal-info__cell">' +
+              '<div class="signal-info__label">想定損益</div>' +
+              '<div class="signal-info__value"><span class="text-success">+¥' +
+                signal.tpProfit.toLocaleString('ja-JP') + '</span> / <span class="text-danger">−¥' +
+                Math.abs(signal.slLoss).toLocaleString('ja-JP') + '</span></div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="signal-info__footer">' +
+            '<span>配信元: Rainbow System Bot</span>' +
+            '<span>通算 #' + signal.number + '</span>' +
+          '</div>' +
+        '</section>' +
+
+        '<div class="chart" id="detail-chart"></div>' +
+
+        '<section class="guide">' +
+          '<div class="guide__title">' + guide.title + '</div>' +
+          '<div class="guide__text">' + guide.lines.join('<br>') + '</div>' +
+          '<div style="margin-top: var(--sp-3); font-size:.88rem;">' +
+            '<strong>現在の判定: </strong>' + global.Judgment.briefHint(j) +
+          '</div>' +
+          '<a href="#" class="guide__link" id="detail-open-learn">🎓 条件の見方を詳しく見る</a>' +
+        '</section>' +
+
+        '<div class="decision">' +
+          '<button class="btn btn--long btn--lg" id="detail-enter">✅ エントリー</button>' +
+          '<button class="btn btn--secondary btn--lg" id="detail-skip">⏸️ 見送る</button>' +
+        '</div>'
+      );
+
+      // Chart をマウント
+      const chartEl = document.getElementById('detail-chart');
+      if (chartEl) {
+        if (this.chart) { this.chart.destroy(); this.chart = null; }
+        this.chart = new global.RainbowChart(chartEl, signal, {
+          liveMode: false, showEntryLines: true
+        });
+      }
+
+      // Bind
+      const self = this;
+      const back = document.getElementById('detail-back');
+      if (back) back.addEventListener('click', function () { self.goHome(); });
+      const enterBtn = document.getElementById('detail-enter');
+      if (enterBtn) enterBtn.addEventListener('click', function () { self.onEnterClicked(signal); });
+      const skipBtn = document.getElementById('detail-skip');
+      if (skipBtn) skipBtn.addEventListener('click', function () { self.onSkipClicked(signal); });
+      const learn = document.getElementById('detail-open-learn');
+      if (learn) learn.addEventListener('click', function (e) { e.preventDefault(); self.openLearningModal(); });
+    },
+
+    onEnterClicked: function (signal) {
+      // リアルタイムモードで開始(position 画面で早送りに切替可)
+      global.Trade.openPosition(signal.id, 'realtime');
+    },
+
+    onSkipClicked: function (signal) {
+      global.Trade.skipSignal(signal.id);
+    },
+
+    /* ======================================================================
+     * ポジション画面
+     * ====================================================================== */
+    renderPosition: function () {
+      const root = document.getElementById('screen-position');
+      if (!root) return;
+      const pos = global.Trade.getCurrentPosition();
+      if (!pos) { this.goHome(); return; }
+      const signal = global.ScenarioUtil.getById(pos.signalId);
+      if (!signal) { this.goHome(); return; }
+
+      const pnlData = global.Trade.getPositionPnL();
+      const d = signal.decimals;
+      const pair = global.GameState.formatPair(signal.pair);
+      const dirBadge = '<span class="badge ' + (signal.direction==='long'?'badge--long':'badge--short') + '">' +
+        global.GameState.directionLabel(signal.direction) + '</span>';
+
+      root.innerHTML = (
+        '<div class="page-header">' +
+          '<button class="page-header__back" id="pos-back" aria-label="戻る">←</button>' +
+          '<div class="page-header__title">ポジション保有中</div>' +
+          '<div class="page-header__meta"><span class="badge badge--status-active">' +
+            (pos.mode === 'fast' ? 'FAST' : 'REALTIME') + '</span></div>' +
+        '</div>' +
+
+        '<section class="live">' +
+          '<div class="live-head">' +
+            '<div>' +
+              '<div class="live__status">LIVE · ' + (pos.mode === 'fast' ? '早送り進行中' : 'リアルタイム進行中') + '</div>' +
+              '<div class="live-head__pair">' + pair + ' ' + dirBadge + '</div>' +
+              '<div style="color: var(--text-muted); font-size:.82rem; margin-top:4px;">Entry ' + signal.entry.toFixed(d) + '</div>' +
+            '</div>' +
+            '<div class="live-head__price mono" data-role="live-price">' + (pnlData ? pnlData.price.toFixed(d) : signal.entry.toFixed(d)) + '</div>' +
+          '</div>' +
+
+          '<div class="chart chart--compact" id="pos-chart"></div>' +
+
+          '<div class="live-pnl">' +
+            '<div class="live-pnl__item">' +
+              '<div class="live-pnl__label">pips</div>' +
+              '<div class="live-pnl__value" data-role="live-pips">' +
+                (pnlData ? global.GameState.formatSignedPips(pnlData.pips) : '0pips') + '</div>' +
+            '</div>' +
+            '<div class="live-pnl__item">' +
+              '<div class="live-pnl__label">損益</div>' +
+              '<div class="live-pnl__value" data-role="live-pnl">' +
+                (pnlData ? global.GameState.formatSignedCurrency(pnlData.pnl) : '¥0') + '</div>' +
+            '</div>' +
+          '</div>' +
+
+          '<div class="range-bar">' +
+            '<div class="range-bar__ends">' +
+              '<span class="sl">SL ' + signal.sl.toFixed(d) + '</span>' +
+              '<span class="tp">TP ' + signal.tp.toFixed(d) + '</span>' +
+            '</div>' +
+            '<div class="range-bar__track">' +
+              '<div class="range-bar__center"></div>' +
+              '<div class="range-bar__marker" data-role="range-marker" style="left:' + global.Trade.getRangeMarkerPercent() + '%"></div>' +
+            '</div>' +
+          '</div>' +
+
+          '<div class="live-actions">' +
+            (pos.mode === 'fast'
+              ? ''
+              : '<button class="btn btn--primary btn--lg" id="pos-fast">⏩ 早送りで結果を見る</button>') +
+            '<button class="btn btn--secondary btn--lg" id="pos-home">⏰ ホームに戻って待つ</button>' +
+          '</div>' +
+        '</section>'
+      );
+
+      // チャートマウント(コンパクト + liveMode)
+      const chartEl = document.getElementById('pos-chart');
+      if (chartEl) {
+        if (this.chart) { this.chart.destroy(); this.chart = null; }
+        this.chart = new global.RainbowChart(chartEl, signal, {
+          liveMode: true, showEntryLines: true
+        });
+        if (pnlData) this.chart.setLivePrice(pnlData.price);
+        // 既に保有中のポジションなら、現時点までのライブローソクを即反映
+        const liveCs = global.Trade.buildLiveCandles();
+        if (liveCs && liveCs.length) this.chart.setLiveCandles(liveCs);
+      }
+
+      // Bind
+      const self = this;
+      const back = document.getElementById('pos-back');
+      if (back) back.addEventListener('click', function () { self.goHome(); });
+      const fastBtn = document.getElementById('pos-fast');
+      if (fastBtn) fastBtn.addEventListener('click', function () {
+        global.Trade.switchMode('fast');
+      });
+      const homeBtn = document.getElementById('pos-home');
+      if (homeBtn) homeBtn.addEventListener('click', function () { self.goHome(); });
+    },
+
+    updatePositionLive: function (evt) {
+      if (this.state.screen !== 'position') {
+        if (this.state.screen === 'main' && this.state.tab === 'home') {
+          this.updateHomePosition();
+        }
+        return;
+      }
+      const root = document.getElementById('screen-position');
+      if (!root) return;
+      const signal = evt.signal;
+      const d = signal.decimals;
+
+      const priceEl  = root.querySelector('[data-role="live-price"]');
+      const pipsEl   = root.querySelector('[data-role="live-pips"]');
+      const pnlEl    = root.querySelector('[data-role="live-pnl"]');
+      const markerEl = root.querySelector('[data-role="range-marker"]');
+
+      if (priceEl) priceEl.textContent = evt.price.toFixed(d);
+      if (pipsEl)  pipsEl.textContent  = global.GameState.formatSignedPips(evt.pips);
+      if (pnlEl) {
+        pnlEl.textContent = global.GameState.formatSignedCurrency(evt.pnl);
+        pnlEl.style.color = evt.pnl > 0 ? 'var(--color-success)'
+                         : evt.pnl < 0 ? 'var(--color-danger)'
+                         : 'var(--text-primary)';
+      }
+      if (markerEl) {
+        markerEl.style.left = global.Trade.getRangeMarkerPercent() + '%';
+      }
+      if (this.chart) {
+        this.chart.setLivePrice(evt.price);
+        if (evt.liveCandles) this.chart.setLiveCandles(evt.liveCandles);
+      }
+    },
+
+    /* ======================================================================
+     * 結果画面
+     * ====================================================================== */
+    renderResult: function () {
+      const root = document.getElementById('screen-result');
+      if (!root) return;
+      const ctx = this.state.resultContext;
+      if (!ctx) { this.goHome(); return; }
+      const signal = ctx.signal;
+      const trade = ctx.trade;
+      const d = signal.decimals;
+
+      const snap = global.GameState.snapshot();
+      let html = '';
+
+      if (ctx.skipped) {
+        const fb = global.Judgment.judgeSkipFeedback(signal);
+        html =
+          '<section class="result result--skip">' +
+            '<div class="result__icon">⏸️</div>' +
+            '<h1 class="result__title">シグナルを見送りました</h1>' +
+            '<p class="result__message">' + fb.title + '<br><br>' + fb.message + '</p>' +
+            '<div class="result__balance">' +
+              '<div class="result__balance-label">現在の仮想資金</div>' +
+              '<div class="result__balance-value mono">' + global.GameState.formatCapital(snap.account.currentCapital) + '</div>' +
+            '</div>' +
+            '<div class="result__actions">' +
+              '<button class="btn btn--secondary btn--lg" id="result-home">ホームに戻る</button>' +
+              '<button class="btn btn--primary btn--lg" id="result-next">次のシグナルを待つ</button>' +
+            '</div>' +
+          '</section>';
+      } else if (trade.pnl > 0) {
+        html =
+          '<section class="result result--win">' +
+            '<div class="result__icon">🏆</div>' +
+            '<h1 class="result__title">TP HIT!</h1>' +
+            '<div class="result__pips mono text-success">' + global.GameState.formatSignedPips(trade.pnlPips) + '</div>' +
+            '<div class="result__amount">獲得: <strong>' + global.GameState.formatSignedCurrency(trade.pnl) + '</strong></div>' +
+            '<div class="result__balance">' +
+              '<div class="result__balance-label">現在の仮想資金</div>' +
+              '<div class="result__balance-value mono">' + global.GameState.formatCapital(snap.account.currentCapital) + '</div>' +
+            '</div>' +
+            '<p class="result__message">この調子で次もいきましょう!</p>' +
+            '<div class="result__actions">' +
+              '<button class="btn btn--secondary btn--lg" id="result-home">ホームに戻る</button>' +
+              '<button class="btn btn--primary btn--lg" id="result-next">次のシグナルを待つ</button>' +
+            '</div>' +
+          '</section>';
+      } else {
+        html =
+          '<section class="result result--lose">' +
+            '<div class="result__icon">📉</div>' +
+            '<h1 class="result__title">SL HIT</h1>' +
+            '<div class="result__pips mono text-danger">' + global.GameState.formatSignedPips(trade.pnlPips) + '</div>' +
+            '<div class="result__amount">損失: <strong>' + global.GameState.formatSignedCurrency(trade.pnl) + '</strong></div>' +
+            '<div class="result__balance">' +
+              '<div class="result__balance-label">現在の仮想資金</div>' +
+              '<div class="result__balance-value mono">' + global.GameState.formatCapital(snap.account.currentCapital) + '</div>' +
+            '</div>' +
+            '<p class="result__message">相場に絶対はありません。<br>次のチャンスを待ちましょう。</p>' +
+            '<div class="result__actions">' +
+              '<button class="btn btn--secondary btn--lg" id="result-home">ホームに戻る</button>' +
+              '<button class="btn btn--primary btn--lg" id="result-next">次のシグナルを待つ</button>' +
+            '</div>' +
+          '</section>';
+      }
+
+      root.innerHTML = html;
+      const self = this;
+      const homeBtn = document.getElementById('result-home');
+      if (homeBtn) homeBtn.addEventListener('click', function () { self.goHome(); });
+      const nextBtn = document.getElementById('result-next');
+      if (nextBtn) nextBtn.addEventListener('click', function () { self.goHome(); });
+    },
+
+    /* ======================================================================
+     * 学習モーダル
+     * ====================================================================== */
+    openLearningModal: function () {
+      const overlay = document.getElementById('overlay-learning');
+      if (!overlay) return;
+      const body = overlay.querySelector('.overlay__body');
+      if (body) {
+        const sections = global.Judgment.getLearningContent();
+        body.innerHTML = sections.map(function (s) {
+          return (
+            '<section style="margin-bottom: var(--sp-5);">' +
+              '<h3 style="font-size:1rem; margin-bottom: var(--sp-2);">' + s.title + '</h3>' +
+              '<div style="color: var(--text-secondary); line-height:1.8; font-size:.92rem;">' + s.body + '</div>' +
+            '</section>'
+          );
+        }).join('');
+      }
+      overlay.classList.add('is-open');
+    }
+  };
+
+  /* ========================================================================
+   * Boot
+   * ======================================================================== */
+  function boot() { App.init(); }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
+
+  global.App = App;
+
+})(typeof window !== 'undefined' ? window : this);
