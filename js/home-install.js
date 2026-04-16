@@ -3,11 +3,14 @@
  * ホーム画面のインストール促進セクション
  *
  * renderHTML()  : セクションの HTML 文字列を返す(app.js の renderHome から呼ぶ)
- * init()        : イベントバインド + 表示/非表示判定(_bindHomeEvents から呼ぶ)
+ * init()        : 表示判定 + ボタン文言更新(_bindHomeEvents から呼ぶ)
  * dismiss()     : 「今は表示しない」ボタンから呼ぶ
  *
  * 依存: window.DeviceDetect, window.InstallHandler
  * 公開グローバル: window.HomeInstallSection
+ *
+ * ボタン click は onclick 属性で直接 InstallHandler.install() を呼ぶ。
+ * これにより user gesture を確実に伝搬させる(addEventListener だと二重登録の懸念あり)。
  * ========================================================================== */
 
 (function (global) {
@@ -36,24 +39,27 @@
       return !this.isInstalled() && !this.isDismissed();
     },
 
+    /* --- ボタン文言 ---- */
+
+    _btnLabel: function () {
+      var dd = global.DeviceDetect;
+      var ih = global.InstallHandler;
+      if (dd && dd.isIOS && dd.isIOS())   return '📲 ホーム画面への追加方法';
+      if (ih && ih.deferredPrompt)        return '📲 1タップでインストール';
+      return '📲 ホーム画面に追加';
+    },
+
     /* --- HTML 生成(renderHome から呼ばれる) ---- */
 
     renderHTML: function () {
-      // インストール済み(スタンドアロン or フラグ)の場合は完全に非表示
-      if (this.isInstalled()) return '';
-
-      // ボタン文言をデバイス/プロンプト状態に応じて決定
-      var btnLabel = '📲 ホーム画面に追加する';
-      var dd = global.DeviceDetect;
-      var ih = global.InstallHandler;
-      if (dd && dd.isIOS && dd.isIOS()) {
-        btnLabel = '📲 ホーム画面への追加方法';
-      } else if (ih && ih.deferredPrompt) {
-        btnLabel = '📲 1タップでインストール';
+      // インストール済み(スタンドアロン or フラグ)の場合は DOM に入れない
+      if (this.isInstalled()) {
+        if (global.console) console.log('[HomeInstall] skip renderHTML: already installed');
+        return '';
       }
 
       return (
-        '<section class="home-install-section" id="home-install-section" data-install-ui>' +
+        '<section class="home-install-section" id="home-install-section" data-install-ui style="display:block">' +
           '<div class="home-install-header">' +
             '<span class="home-install-icon">📲</span>' +
             '<div class="home-install-title">' +
@@ -75,44 +81,45 @@
               '<span>オフラインでも使える</span>' +
             '</div>' +
           '</div>' +
-          '<button class="home-install-btn-primary" data-install-btn id="home-install-main-btn" type="button">' +
-            btnLabel +
+          '<button class="home-install-btn-primary" data-install-btn id="home-install-main-btn" type="button" ' +
+                  'onclick="if(window.InstallHandler)window.InstallHandler.install();">' +
+            this._btnLabel() +
           '</button>' +
-          '<button class="home-install-btn-skip" id="home-install-skip-btn" type="button">' +
+          '<button class="home-install-btn-skip" id="home-install-skip-btn" type="button" ' +
+                  'onclick="if(window.HomeInstallSection)window.HomeInstallSection.dismiss();">' +
             '今は表示しない' +
           '</button>' +
         '</section>'
       );
     },
 
-    /* --- イベントバインド(_bindHomeEvents から呼ばれる) ---- */
+    /* --- 初期化(_bindHomeEvents から呼ばれる) ---- */
 
     init: function () {
-      var self    = this;
       var section = document.getElementById('home-install-section');
-      if (!section) return;
-
-      // 一時的に非表示にしている場合は非表示にする(DOM には存在する)
-      if (this.isDismissed()) {
-        section.style.display = 'none';
+      if (!section) {
+        if (global.console) console.warn('[HomeInstall] section not found in DOM');
         return;
       }
 
-      section.style.display = '';
+      if (this.isInstalled()) {
+        section.style.display = 'none';
+        if (global.console) console.log('[HomeInstall] hidden: isInstalled=true');
+        return;
+      }
 
+      if (this.isDismissed()) {
+        section.style.display = 'none';
+        if (global.console) console.log('[HomeInstall] hidden: dismissed');
+        return;
+      }
+
+      section.style.display = 'block';
+      if (global.console) console.log('[HomeInstall] shown');
+
+      // 後から InstallHandler.deferredPrompt が set されたケースにも対応してラベル更新
       var mainBtn = document.getElementById('home-install-main-btn');
-      if (mainBtn) {
-        mainBtn.addEventListener('click', function () {
-          if (global.InstallHandler) global.InstallHandler.install();
-        });
-      }
-
-      var skipBtn = document.getElementById('home-install-skip-btn');
-      if (skipBtn) {
-        skipBtn.addEventListener('click', function () {
-          self.dismiss();
-        });
-      }
+      if (mainBtn) mainBtn.textContent = this._btnLabel();
     },
 
     /* --- 非表示処理 ---- */
