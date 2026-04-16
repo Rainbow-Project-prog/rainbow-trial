@@ -358,7 +358,22 @@
         }
         case 'pwa-check': {
           const standalone = (matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
-          alert('standalone: ' + standalone + '\ninstall prompt: ' + (self._installPromptEvent ? 'available' : 'none'));
+          const dd = global.DeviceDetect || {};
+          const ih = global.InstallHandler || {};
+          const os = (dd.isIOS && dd.isIOS()) ? 'iOS'
+                   : (dd.isAndroid && dd.isAndroid()) ? 'Android' : 'PC';
+          const info = [
+            'OS: ' + os,
+            'Standalone: ' + standalone,
+            'iOS Standalone flag: ' + (navigator.standalone || false),
+            'SW supported: ' + ('serviceWorker' in navigator),
+            'Notification supported: ' + ('Notification' in window),
+            'deferredPrompt: ' + (ih.deferredPrompt ? 'available ✅' : 'null ⚠️'),
+            'isInstalled flag: ' + (localStorage.getItem('user_installed') || 'false'),
+            'Display mode: ' + (standalone ? 'standalone' : 'browser'),
+            'UA: ' + (navigator.userAgent || '').slice(0, 80)
+          ];
+          alert(info.join('\n'));
           break;
         }
         case 'reset-all': {

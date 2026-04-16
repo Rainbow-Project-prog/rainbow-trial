@@ -218,6 +218,7 @@
           localStorage.getItem('user_installed') === 'true') {
         self.isInstalled = true;
         self._hideAllInstallUI();
+        console.log('[Install] init: already installed, UI hidden');
         return;
       }
 
@@ -226,6 +227,7 @@
         self.deferredPrompt = global._deferredInstallPrompt;
         global._deferredInstallPrompt = null;
         _updateButtonLabels(true);
+        console.log('[Install] init: recovered pre-captured deferredPrompt');
       }
 
       if (!this._initDone) {
@@ -235,16 +237,31 @@
           e.preventDefault();
           self.deferredPrompt = e;
           _updateButtonLabels(true);
-          console.log('[Install] beforeinstallprompt received');
+          console.log('[Install] ✅ beforeinstallprompt captured');
         });
 
         global.addEventListener('appinstalled', function () {
+          console.log('[Install] ✅ appinstalled event');
           self.markInstalled();
         });
       }
 
       // 初期ボタン表示を更新
       _updateButtonLabels(!!self.deferredPrompt);
+
+      // 5秒後に deferredPrompt の状態を診断(Chrome の engagement 不足を検知)
+      setTimeout(function () {
+        if (self.isInstalled) return;
+        if (self.deferredPrompt) {
+          console.log('[Install] ✅ deferredPrompt available after 5s');
+        } else {
+          var os = (dd.isIOS && dd.isIOS()) ? 'iOS'
+                 : (dd.isAndroid && dd.isAndroid()) ? 'Android'
+                 : 'PC';
+          console.warn('[Install] ⚠️ deferredPrompt NOT available after 5s (OS: ' + os + ')');
+          console.warn('  → Chrome engagement 不足 / 既にインストール済み / SW未登録 / manifest問題 の可能性');
+        }
+      }, 5000);
     },
 
     /** 全インストールボタンから呼ばれるメイン関数 */
@@ -252,12 +269,18 @@
       var self = this;
       var dd = global.DeviceDetect || {};
 
+      console.log('[Install] install() called',
+        { isInstalled: self.isInstalled,
+          deferredPrompt: self.deferredPrompt ? 'available' : 'null',
+          isIOS: !!(dd.isIOS && dd.isIOS()),
+          isAndroid: !!(dd.isAndroid && dd.isAndroid()) });
+
       if (self.isInstalled) {
         alert('すでにアプリとしてインストール済みです🌈\nホーム画面のアイコンから起動してください。');
         return;
       }
 
-      // iOS
+      // iOS: 必ず手順モーダル
       if (dd.isIOS && dd.isIOS()) {
         if (dd.isIOSSafari && !dd.isIOSSafari()) {
           alert('iPhone では Safari ブラウザでアクセスしてください。\n他のブラウザではホーム画面に追加できません。');
@@ -267,22 +290,35 @@
         return;
       }
 
-      // Android / PC: 自動プロンプト
+      // Android / PC: deferredPrompt があれば必ずネイティブダイアログ
       if (self.deferredPrompt) {
+        console.log('[Install] 🚀 Showing native install prompt');
         var p = self.deferredPrompt;
         self.deferredPrompt = null;
-        p.prompt();
-        p.userChoice.then(function (result) {
-          if (result.outcome === 'accepted') {
-            self.markInstalled();
-          } else {
+        try {
+          p.prompt();
+          p.userChoice.then(function (result) {
+            console.log('[Install] user choice:', result.outcome);
+            if (result.outcome === 'accepted') {
+              self.markInstalled();
+            } else {
+              _updateButtonLabels(false);
+            }
+          }).catch(function (err) {
+            console.error('[Install] prompt error:', err);
             _updateButtonLabels(false);
-          }
-        }).catch(function () { _updateButtonLabels(false); });
+          });
+        } catch (err) {
+          console.error('[Install] prompt exception:', err);
+          _updateButtonLabels(false);
+          if (dd.isAndroid && dd.isAndroid()) self.showAndroidGuide();
+          else self.showPCGuide();
+        }
         return;
       }
 
-      // フォールバック: 手動ガイド
+      // deferredPrompt が取れていない場合の最終手段(手動ガイド)
+      console.warn('[Install] deferredPrompt not available, showing manual guide');
       if (dd.isAndroid && dd.isAndroid()) {
         self.showAndroidGuide();
       } else {
